@@ -376,9 +376,11 @@ END
 
 IF @showDuration = 1 OR @showCpu = 1 OR @showIo = 1 OR @showMemory = 1 OR @showParallelism = 1 OR @showTotalDuration = 1 OR @showTotalExecutions = 1 BEGIN
 
-    SELECT *
+    SELECT rs.*
     INTO #tempQueryStoreRuntimeStats
-    FROM sys.query_store_runtime_stats
+    FROM sys.query_store_runtime_stats rs
+    INNER JOIN sys.query_store_runtime_stats_interval i on rs.runtime_stats_interval_id = i.runtime_stats_interval_id
+    WHERE end_time >= @dt
 
     SELECT
     @@SPID AS SPID,
@@ -465,9 +467,7 @@ IF @showDuration = 1 OR @showCpu = 1 OR @showIo = 1 OR @showMemory = 1 OR @showP
         AVG(qrs.avg_physical_io_reads) AS AvgPhysicalIoReads, MAX(qrs.last_physical_io_reads) AS LastPhysicalIoReads, MAX(qrs.max_physical_io_reads) AS MaxPhysicalIoReads, MIN(qrs.min_physical_io_reads) AS MinPhysicalIoReads,
         AVG(qrs.avg_num_physical_io_reads) AS AvgNumPhysicalIoReads, MAX(qrs.last_num_physical_io_reads) AS LastNumPhysicalIoReads, MAX(qrs.max_num_physical_io_reads) AS MaxNumPhysicalIoReads, MIN(qrs.min_num_physical_io_reads) AS MinNumPhysicalIoReads
         FROM #tempQueryStoreRuntimeStats qrs (NOLOCK)
-        INNER JOIN sys.query_store_runtime_stats_interval i on qrs.runtime_stats_interval_id = i.runtime_stats_interval_id
         WHERE qrs.plan_id = qsp.plan_id
-        AND i.end_time >= @dt
         GROUP BY qrs.plan_id
 	) ca_aggregate_runtime_stats
 	CROSS APPLY
