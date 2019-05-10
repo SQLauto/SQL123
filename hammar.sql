@@ -6,6 +6,8 @@ DECLARE @queryId INT = NULL;
 DECLARE @showUserConnections BIT = 1
 DECLARE @showSpidSesisonLoginInformation BIT = 0;
 
+DECLARE @showSqlServerMemoryProfile BIT = 0;
+DECLARE @showMemoryGrants BIT = 0;
 
 DECLARE @showAllAzureLimits BIT = 0;
 DECLARE @showAzureMemoryUsage BIT = 0;
@@ -20,9 +22,6 @@ DECLARE @showInstanceCpuPercent BIT = 0;
 DECLARE @showAzureInstanceMemory BIT = 0;
 DECLARE @showOverPercent FLOAT = 40;
  
-DECLARE @showSqlServerMemoryProfile BIT = 1;
-DECLARE @showMemoryGrants BIT = 1;
-
 DECLARE @showDuration BIT = 0;
 DECLARE @showTotalDuration BIT = 0;
 DECLARE @showTotalExecutions BIT = 0;
