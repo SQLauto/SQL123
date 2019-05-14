@@ -3,38 +3,41 @@ DECLARE @top INT = 5;
 DECLARE @plainId INT = NULL;
 DECLARE @queryId INT = NULL;
 
-DECLARE @showUserConnections BIT = 1
+DECLARE @showUserConnections BIT = 1;
 DECLARE @showSpidSesisonLoginInformation BIT = 0;
 
 DECLARE @showSqlServerMemoryProfile BIT = 0;
-DECLARE @showMemoryGrants BIT = 0;
+DECLARE @showMemoryGrants BIT = 1;
 
 DECLARE @showAllAzureLimits BIT = 0;
 DECLARE @showAzureMemoryUsage BIT = 0;
 DECLARE @showAzureCpu BIT = 0;
-DECLARE @showAvgDataIoPercent BIT = 0;
-DECLARE @showAvgLogWritePercent BIT = 0;
-DECLARE @showAvgLoginRatePercent BIT = 0;
-DECLARE @showAvgXtpStoragePercent BIT = 0;
-DECLARE @showAvgMaxWorkerPercent BIT = 0;
-DECLARE @showMaxSessionPercent BIT = 0;
-DECLARE @showInstanceCpuPercent BIT = 0;
+DECLARE @showAzureAvgDataIoPercent BIT = 0;
+DECLARE @showAzureAvgLogWritePercent BIT = 0;
+DECLARE @showAzureAvgLoginRatePercent BIT = 0;
+DECLARE @showAzureAvgXtpStoragePercent BIT = 0;
+DECLARE @showAzureAvgMaxWorkerPercent BIT = 0;
+DECLARE @showAzureMaxSessionPercent BIT = 0;
+DECLARE @showAureInstanceCpuPercent BIT = 0;
 DECLARE @showAzureInstanceMemory BIT = 0;
-DECLARE @showOverPercent FLOAT = 40;
+DECLARE @showAzureOverPercent FLOAT = 40;
  
 DECLARE @showDuration BIT = 0;
 DECLARE @showTotalDuration BIT = 0;
 DECLARE @showTotalExecutions BIT = 0;
 DECLARE @showIo BIT = 0;
 DECLARE @showCpu BIT = 0;
-DECLARE @showMemory BIT = 0;
+DECLARE @showMemory BIT = 1;
 DECLARE @showParallelism BIT = 0;
-
 
 DECLARE @showSpidSessionRuntimeStats BIT = 0;
 DECLARE @showSpidRequestRuntimeStats BIT = 0;
 DECLARE @showSpidRequestQuery BIT = 0;
 DECLARE @showSpidRequestWaitStat BIT = 0;
+
+DECLARE @showStats BIT = 0;
+DECLARE @statFilterOnTable VARCHAR(100) = 'Delivery';
+
 
 DECLARE @isAzure BIT = 0
 
@@ -43,18 +46,49 @@ IF SERVERPROPERTY('Edition') = N'SQL Azure' BEGIN
 END
 
 
-IF @showAllAzureLimits = 1
-    OR @showAllAzureLimits = 1
-    OR @showAzureMemoryUsage = 1
-    OR @showAzureCpu = 1
-    OR @showAvgDataIoPercent = 1
-    OR @showAvgLogWritePercent = 1
-    OR @showAvgLoginRatePercent = 1
-    OR @showAvgXtpStoragePercent = 1
-    OR @showAvgMaxWorkerPercent = 1
-    OR @showMaxSessionPercent = 1
-    OR @showInstanceCpuPercent = 1
-OR @showAzureInstanceMemory = 1
+If @showStats = 1 BEGIN
+
+
+    SELECT t.name As TableName, 
+    sp.stats_id StatId, 
+    stat.name StatName, 
+    last_updated,
+    modification_counter, 
+    rows_sampled, 
+    rows, 
+    CAST((rows * .20) AS INT) + rows + 500 AS NextIndexUpdate, 
+    sp.persisted_sample_percent, 
+    steps, unfiltered_rows, 
+    filter_definition, 
+    stat.auto_created, 
+    stat.is_temporary, stat.no_recompute, 
+    stat.has_filter, stat.has_persisted_sample, 
+    stat.is_incremental,
+    stat.stats_generation_method_desc
+    FROM sys.stats AS stat   
+    CROSS APPLY sys.dm_db_stats_properties(stat.object_id, stat.stats_id) AS sp 
+    JOIN sys.tables t ON t.object_id = stat.object_id
+    WHERE (@statFilterOnTable IS NULL OR t.name = @statFilterOnTable)
+    ORDER BY TableName
+
+END 
+
+
+IF @isAzure = 1 AND
+    (
+        @showAllAzureLimits = 1
+        OR @showAllAzureLimits = 1
+        OR @showAzureMemoryUsage = 1
+        OR @showAzureCpu = 1
+        OR @showAzureAvgDataIoPercent = 1
+        OR @showAzureAvgLogWritePercent = 1
+        OR @showAzureAvgLoginRatePercent = 1
+        OR @showAzureAvgXtpStoragePercent = 1
+        OR @showAzureAvgMaxWorkerPercent = 1
+        OR @showAzureMaxSessionPercent = 1
+        OR @showAureInstanceCpuPercent = 1
+        OR @showAzureInstanceMemory = 1
+    )
 BEGIN
 
     SELECT 
@@ -70,7 +104,7 @@ BEGIN
         FROM sys.dm_db_resource_stats
         WHERE end_time >= @dt
         AND (@showAllAzureLimits = 1 OR @showAzureMemoryUsage = 1)
-        AND avg_memory_usage_percent > @showOverPercent
+        AND avg_memory_usage_percent > @showAzureOverPercent
     ) AS max_memory ON max_memory.MaxAvgPercent = s.avg_memory_usage_percent
     WHERE end_time >= @dt
     AND MaxAvgPercent <> 0.00
@@ -88,7 +122,7 @@ BEGIN
         FROM sys.dm_db_resource_stats
         WHERE end_time >= @dt
         AND (@showAllAzureLimits = 1 OR @showAzureCpu = 1)
-        AND avg_cpu_percent > @showOverPercent
+        AND avg_cpu_percent > @showAzureOverPercent
     ) AS max_avg ON max_avg.MaxAvgPercent = s.avg_cpu_percent
     WHERE end_time >= @dt
     AND MaxAvgPercent <> 0.00
@@ -105,8 +139,8 @@ BEGIN
         SELECT MAX(avg_data_io_percent) AS MaxAvgPercent
         FROM sys.dm_db_resource_stats
         WHERE end_time >= @dt
-        AND (@showAllAzureLimits = 1 OR @showAvgDataIoPercent = 1)
-        AND avg_data_io_percent > @showOverPercent
+        AND (@showAllAzureLimits = 1 OR @showAzureAvgDataIoPercent = 1)
+        AND avg_data_io_percent > @showAzureOverPercent
     ) AS max_avg ON max_avg.MaxAvgPercent = s.avg_data_io_percent
     WHERE end_time >= @dt
     AND MaxAvgPercent <> 0.00
@@ -123,8 +157,8 @@ BEGIN
         SELECT MAX(avg_log_write_percent) AS MaxAvgPercent
         FROM sys.dm_db_resource_stats
         WHERE end_time >= @dt
-        AND (@showAllAzureLimits = 1 OR @showAvgLogWritePercent = 1)
-        AND avg_log_write_percent > @showOverPercent
+        AND (@showAllAzureLimits = 1 OR @showAzureAvgLogWritePercent = 1)
+        AND avg_log_write_percent > @showAzureOverPercent
     ) AS max_log_write ON max_log_write.MaxAvgPercent = s.avg_log_write_percent
     WHERE end_time >= @dt
     AND MaxAvgPercent <> 0.00
@@ -141,8 +175,8 @@ BEGIN
         SELECT MAX(avg_login_rate_percent) AS MaxAvgPercent
         FROM sys.dm_db_resource_stats
         WHERE end_time >= @dt
-        AND (@showAllAzureLimits = 1 OR @showAvgLoginRatePercent = 1)
-        AND avg_login_rate_percent > @showOverPercent
+        AND (@showAllAzureLimits = 1 OR @showAzureAvgLoginRatePercent = 1)
+        AND avg_login_rate_percent > @showAzureOverPercent
     ) AS max_log_write ON max_log_write.MaxAvgPercent = s.avg_login_rate_percent
     WHERE end_time >= @dt
     AND MaxAvgPercent <> 0.00
@@ -159,8 +193,8 @@ BEGIN
         SELECT MAX(xtp_storage_percent) AS MaxAvgPercent
         FROM sys.dm_db_resource_stats
         WHERE end_time >= @dt
-        AND (@showAllAzureLimits = 1 OR @showAvgXtpStoragePercent = 1)
-        AND xtp_storage_percent > @showOverPercent
+        AND (@showAllAzureLimits = 1 OR @showAzureAvgXtpStoragePercent = 1)
+        AND xtp_storage_percent > @showAzureOverPercent
     ) AS max_log_write ON max_log_write.MaxAvgPercent = s.xtp_storage_percent
     WHERE end_time >= @dt
     AND MaxAvgPercent <> 0.00
@@ -177,8 +211,8 @@ BEGIN
         SELECT MAX(max_worker_percent) AS MaxAvgPercent
         FROM sys.dm_db_resource_stats
         WHERE end_time >= @dt
-        AND (@showAllAzureLimits = 1 OR @showAvgMaxWorkerPercent = 1)
-        AND max_worker_percent > @showOverPercent
+        AND (@showAllAzureLimits = 1 OR @showAzureAvgMaxWorkerPercent = 1)
+        AND max_worker_percent > @showAzureOverPercent
     ) AS max_log_write ON max_log_write.MaxAvgPercent = s.max_worker_percent
     WHERE end_time >= @dt
     AND MaxAvgPercent <> 0.00
@@ -195,8 +229,8 @@ BEGIN
         SELECT MAX(max_session_percent) AS MaxAvgPercent
         FROM sys.dm_db_resource_stats
         WHERE end_time >= @dt
-        AND (@showAllAzureLimits = 1 OR @showMaxSessionPercent = 1)
-        AND max_session_percent > @showOverPercent
+        AND (@showAllAzureLimits = 1 OR @showAzureMaxSessionPercent = 1)
+        AND max_session_percent > @showAzureOverPercent
     ) AS max_log_write ON max_log_write.MaxAvgPercent = s.max_session_percent
     WHERE end_time >= @dt
     AND MaxAvgPercent <> 0.00
@@ -213,8 +247,8 @@ BEGIN
         SELECT MAX(avg_instance_cpu_percent) AS MaxAvgPercent
         FROM sys.dm_db_resource_stats
         WHERE end_time >= @dt
-        AND (@showAllAzureLimits = 1 OR @showInstanceCpuPercent = 1)
-        AND avg_instance_cpu_percent > @showOverPercent
+        AND (@showAllAzureLimits = 1 OR @showAureInstanceCpuPercent = 1)
+        AND avg_instance_cpu_percent > @showAzureOverPercent
     ) AS max_log_write ON max_log_write.MaxAvgPercent = s.avg_instance_cpu_percent
     WHERE end_time >= @dt
     AND MaxAvgPercent <> 0.00
@@ -232,11 +266,31 @@ BEGIN
         FROM sys.dm_db_resource_stats
         WHERE end_time >= @dt
         AND (@showAllAzureLimits = 1 OR @showAzureInstanceMemory = 1)
-        AND avg_instance_memory_percent > @showOverPercent
+        AND avg_instance_memory_percent > @showAzureOverPercent
     ) AS max_log_write ON max_log_write.MaxAvgPercent = s.avg_instance_memory_percent
     WHERE end_time >= @dt
     AND MaxAvgPercent <> 0.00
     ORDER BY DataPointLimitType, EndDteTime DESC
+
+END
+ELSE IF @isAzure = 1 AND
+    (
+        @showAllAzureLimits = 1
+        OR @showAllAzureLimits = 1
+        OR @showAzureMemoryUsage = 1
+        OR @showAzureCpu = 1
+        OR @showAzureAvgDataIoPercent = 1
+        OR @showAzureAvgLogWritePercent = 1
+        OR @showAzureAvgLoginRatePercent = 1
+        OR @showAzureAvgXtpStoragePercent = 1
+        OR @showAzureAvgMaxWorkerPercent = 1
+        OR @showAzureMaxSessionPercent = 1
+        OR @showAureInstanceCpuPercent = 1
+        OR @showAzureInstanceMemory = 1
+    )
+BEGIN
+
+    SELECT 'Must be Azure SQL Database to use DTU or CPU Limits'
 
 END
 
@@ -484,7 +538,7 @@ IF @showSpidSesisonLoginInformation = 1
         SessionClientVersion,
         SessionIsUserProcess,
         SessionStatus,
-        SessionTotalElapedTime,
+        CAST(SessionTotalElapedTime AS NVARCHAR(50)) + ' ms' AS SessionTotalElapedTime,
         SessionRequestedStartTime,
         SessionRequestedEndTime,
         SessionLastSuccessfulLogon,
@@ -916,3 +970,16 @@ END
 -- Show what wait states users are in
 -- permission for those users.
 -- Threading settings
+
+
+--- maintanice windows
+    -- statistics/stats -  that get updated more often you might want to do every day more reorgs that rebuilds online/offline reorgs??
+    --              - tables that don't get update often don't need to
+    --               DBCC CHECKDB? - Brent Ozar Unlimited® - https://www.brentozar.com/archive/2016/02/how-often-should-i-run-dbcc-checkdb/ 
+    --              backup - 
+    --              traceflage for updating statistics
+
+    -- 
+-- know your baseline cpu usage for the past few weeks during different times
+-- how many log flushes
+-- how many batche requests
