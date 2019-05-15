@@ -7,7 +7,7 @@ DECLARE @showUserConnections BIT = 1;
 DECLARE @showSpidSesisonLoginInformation BIT = 0;
 
 DECLARE @showSqlServerMemoryProfile BIT = 0;
-DECLARE @showMemoryGrants BIT = 1;
+DECLARE @showMemoryGrants BIT = 0;
 
 DECLARE @showAllAzureLimits BIT = 0;
 DECLARE @showAzureMemoryUsage BIT = 0;
@@ -21,13 +21,13 @@ DECLARE @showAzureMaxSessionPercent BIT = 0;
 DECLARE @showAureInstanceCpuPercent BIT = 0;
 DECLARE @showAzureInstanceMemory BIT = 0;
 DECLARE @showAzureOverPercent FLOAT = 40;
- 
+
 DECLARE @showDuration BIT = 0;
 DECLARE @showTotalDuration BIT = 0;
 DECLARE @showTotalExecutions BIT = 0;
 DECLARE @showIo BIT = 0;
 DECLARE @showCpu BIT = 0;
-DECLARE @showMemory BIT = 1;
+DECLARE @showMemory BIT = 0;
 DECLARE @showParallelism BIT = 0;
 
 DECLARE @showSpidSessionRuntimeStats BIT = 0;
@@ -45,39 +45,74 @@ IF SERVERPROPERTY('Edition') = N'SQL Azure' BEGIN
 	SET @isAzure = 1
 END
 
+SELECT *,
+N'https://docs.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql-compatibility-level' AS CompatibiltyList
+INTO #TempDatabases
+FROM sys.databases
+DECLARE @prodctionMajorVersion FLOAT =  CAST(SERVERPROPERTY(N'ProductMajorVersion') AS FLOAT);
+DECLARE @productMinorVersion FLOAT =    CAST(SERVERPROPERTY(N'ProductMinorVersion') AS FLOAT);
+DECLARE @productUpdateLevel SQL_VARIANT =     SERVERPROPERTY(N'ProductUpdateLevel');
+DECLARE @productUpdateReference SQL_VARIANT = SERVERPROPERTY(N'ProductUpdateReference');
+DECLARE @compatibilityLevel TINYINT = (SELECT TOP 1 compatibility_level FROM #TempDatabases WHERE name =  DB_NAME());
+
+CREATE TABLE #TempTraceFlags (Name INT, Status INT, Global INT, Session INT)
+INSERT INTO #TempTraceFlags  exec('DBCC TRACESTATUS()');
+
+--SELECT 
+--@@version as PrettyPrintVersion,
+--SERVERPROPERTY(N'ProductMajorVersion') AS ProductMajorVersion, 
+--SERVERPROPERTY(N'ProductMinorVersion') AS ProductMinorVersion, 
+--SERVERPROPERTY(N'ProductUpdateLevel') AS ProductUpdateLevel, 
+--SERVERPROPERTY(N'ProductUpdateReference') AS ProductUpdateReference, 
+ 
+--SERVERPROPERTY(N'ProductVersion') AS ProductVersion, 
+--SERVERPROPERTY (N'productlevel') AS ProductLevel, 
+--SERVERPROPERTY (N'Edition') AS Edition, 
+--IIF(SERVERPROPERTY(N'IsClustered') = 0, N'Not Clusterd', N'Clustered') AS IsClustered,
+--IIF(SERVERPROPERTY(N'IsIntegratedSecurityOnly') = 0, N'Both Windows Authentication and SQL Server Authentication', N'Integrated security (Windows Authentication)') AS IntegratedSecurity
+
 
 If @showStats = 1 BEGIN
 
+	DECLARE @dynamicAutoUpateTraceFlage BIT = (
+	SELECT IIF(Name IS NULL, 0, 1) 
+	FROM #TempTraceFlags 
+	WHERE Name = '2371' 
+	AND @prodctionMajorVersion >= 10.5
+	)
 
-    SELECT t.name As TableName, 
-    sp.stats_id StatId, 
-    stat.name StatName, 
-    last_updated,
-    modification_counter, 
-    rows_sampled, 
-    rows, 
-    CAST((rows * .20) AS INT) + rows + 500 AS NextIndexUpdate, 
-    sp.persisted_sample_percent, 
-    steps, unfiltered_rows, 
-    filter_definition, 
-    stat.auto_created, 
-    stat.is_temporary, stat.no_recompute, 
-    stat.has_filter, stat.has_persisted_sample, 
-    stat.is_incremental,
-    stat.stats_generation_method_desc
-    FROM sys.stats AS stat   
-    CROSS APPLY sys.dm_db_stats_properties(stat.object_id, stat.stats_id) AS sp 
-    JOIN sys.tables t ON t.object_id = stat.object_id
+	SELECT t.name As TableName, 
+	sp.stats_id StatId, 
+	s.name StatName, 
+	sp.last_updated AS LastUpdated,
+	sp.rows_sampled AS RowsSampled, 
+	sp.modification_counter, 
+	sp.rows,
+	CONVERT(DECIMAL(10,2), IIF(@compatibilityLevel >= 130 OR @dynamicAutoUpateTraceFlage = 1, SQRT(1000 * sp.rows), IIF(sp.rows <= 500, 500, sp.rows * .20 + 500)) ) AS RowsNeedToUpdate, 
+	CONVERT(DECIMAL(10,2), IIF(@compatibilityLevel >= 130 OR @dynamicAutoUpateTraceFlage = 1, SQRT(1000 * sp.rows) + sp.rows, IIF(sp.rows <= 500, 500, sp.rows * .20 + 500 + sp.rows)) ) AS NextIndexUpdate, 
+	CONVERT(DECIMAL(10,2), IIF(@compatibilityLevel >= 130 OR @dynamicAutoUpateTraceFlage = 1, (SQRT(1000 * sp.rows) + sp.rows) - sp.modification_counter, IIF(sp.rows <= 500, 500 - sp.modification_counter, (sp.rows * .20 + 500 + sp.rows) - sp.modification_counter)) ) AS RowsLeftToUpdate, 
+	IIF(@compatibilityLevel >= 130 OR @dynamicAutoUpateTraceFlage = 1, STR(SQRT(1000 * sp.rows) / (SQRT(1000 * sp.rows)  + sp.rows) * 100, 5, 2) + N'%', IIF(sp.rows <= 500, N'<= 500 No %', '20% + 500')) AS PecentForNextUpdate,
+	sp.persisted_sample_percent AS PersistedSamplePercent, 
+	sp.steps AS Steps, 
+	unfiltered_rows AS UnfilteredRows, 
+	filter_definition AS FilterDefinition, 
+	s.auto_created AS AutoCreated, 
+	s.is_temporary AS IsTemporary, 
+	s.no_recompute AS NoRecompute, 
+	s.has_filter AS HasFilter, 
+	s.is_incremental AS IsIncremental,
+	N'https://docs.microsoft.com/en-us/sql/relational-databases/statistics/statistics' AS ViewAboutStatistics
+	FROM sys.stats AS s   
+	CROSS APPLY sys.dm_db_stats_properties(s.object_id, s.stats_id) AS sp 
+	JOIN sys.tables t ON t.object_id = s.object_id
     WHERE (@statFilterOnTable IS NULL OR t.name = @statFilterOnTable)
     ORDER BY TableName
 
 END 
 
-
 IF @isAzure = 1 AND
     (
-        @showAllAzureLimits = 1
-        OR @showAllAzureLimits = 1
+		@showAllAzureLimits = 1
         OR @showAzureMemoryUsage = 1
         OR @showAzureCpu = 1
         OR @showAzureAvgDataIoPercent = 1
@@ -90,7 +125,6 @@ IF @isAzure = 1 AND
         OR @showAzureInstanceMemory = 1
     )
 BEGIN
-
     SELECT 
     'Memory Usage' AS DataPointLimitType,
     GETDATE() AS CurrentDateTime,
@@ -276,7 +310,6 @@ END
 ELSE IF @isAzure = 1 AND
     (
         @showAllAzureLimits = 1
-        OR @showAllAzureLimits = 1
         OR @showAzureMemoryUsage = 1
         OR @showAzureCpu = 1
         OR @showAzureAvgDataIoPercent = 1
@@ -951,7 +984,11 @@ IF @showDuration = 1 OR @showCpu = 1 OR @showIo = 1 OR @showMemory = 1 OR @showP
     DROP TABLE #QueryStoreData
 END
 
+DROP TABLE #TempDatabases
+DROP TABLE #TempTraceFlags
+
 --TODO
+--select *  FROM sys.database_files
 --Show users
 --Show users permissions
 -- Show Transactions
