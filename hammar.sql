@@ -7,7 +7,7 @@ DECLARE @showUserConnections BIT = 1;
 DECLARE @showSpidSesisonLoginInformation BIT = 0;
 
 DECLARE @showSqlServerMemoryProfile BIT = 0;
-DECLARE @showMemoryGrants BIT = 0;
+DECLARE @showQueryStoreMemoryGrants BIT = 0;
 
 DECLARE @showAllAzureLimits BIT = 0;
 DECLARE @showAzureMemoryUsage BIT = 0;
@@ -22,13 +22,23 @@ DECLARE @showAureInstanceCpuPercent BIT = 0;
 DECLARE @showAzureInstanceMemory BIT = 0;
 DECLARE @showAzureOverPercent FLOAT = 40;
 
-DECLARE @showDuration BIT = 0;
-DECLARE @showTotalDuration BIT = 0;
-DECLARE @showTotalExecutions BIT = 0;
-DECLARE @showIo BIT = 0;
-DECLARE @showCpu BIT = 0;
-DECLARE @showMemory BIT = 0;
-DECLARE @showParallelism BIT = 0;
+DECLARE @showDmCpuDuration BIT = 0;
+DECLARE @showDmPhysicalReads BIT = 0;
+DECLARE @showDmLogicallWrites BIT = 0;
+DECLARE @showDmLogicallReads BIT = 0;
+DECLARE @showDmStoreParallelism BIT = 0;
+DECLARE @showDmGrants BIT = 0;
+DECLARE @showDmSpills BIT = 1
+DECLARE @showDmClrDuration BIT = 0;
+DECLARE @minTotalExecutionsOrderingAvg TINYINT = 2;
+
+DECLARE @showQueryStoreDuration BIT = 0;
+DECLARE @showQueryStoreTotalDuration BIT = 0;
+DECLARE @showQueryStoreTotalExecutions BIT = 0;
+DECLARE @showQueryStoreIo BIT = 0;
+DECLARE @showQueryStoreCpu BIT = 0;
+DECLARE @showQueryStoreMemory BIT = 0;
+DECLARE @showQueryStoreParallelism BIT = 0;
 
 DECLARE @showSpidSessionRuntimeStats BIT = 0;
 DECLARE @showSpidRequestRuntimeStats BIT = 0;
@@ -71,6 +81,353 @@ INSERT INTO #TempTraceFlags  exec('DBCC TRACESTATUS()');
 --IIF(SERVERPROPERTY(N'IsClustered') = 0, N'Not Clusterd', N'Clustered') AS IsClustered,
 --IIF(SERVERPROPERTY(N'IsIntegratedSecurityOnly') = 0, N'Both Windows Authentication and SQL Server Authentication', N'Integrated security (Windows Authentication)') AS IntegratedSecurity
 
+
+IF 
+	@showDmCpuDuration = 1 
+	OR @showDmPhysicalReads = 1 
+	OR @showDmLogicallWrites = 1 
+	OR @showDmLogicallReads = 1 
+	OR @showDmClrDuration = 1 
+	OR @showDmStoreParallelism = 1 
+	OR @showDmGrants = 1 
+	OR @showDmSpills = 1
+BEGIN
+
+	SELECT *,
+	total_grant_kb/execution_count AS avg_grant_kb,
+	total_used_grant_kb/execution_count AS avg_used_grant_kb,
+	total_ideal_grant_kb/execution_count AS avg_ideal_grant_kb,
+	total_dop/execution_count AS avg_dop,
+	total_worker_time/execution_count AS avg_worker_time,
+	total_logical_writes/execution_count AS avg_logical_writes,
+	total_logical_reads/execution_count AS avg_logical_reads,
+	total_physical_reads/execution_count AS avg_physical_reads,
+	total_clr_time/execution_count AS avg_clr_time,
+	total_spills/execution_count AS avg_spills,
+	total_rows/execution_count AS avg_rows
+	INTO #TempDmQueryStats
+	FROM sys.dm_exec_query_stats 
+
+	
+	IF @showDmSpills = 1 BEGIN
+
+		SELECT TOP(@top)
+		@@SPID AS SPID,
+		FORMAT(qs.total_rows , N'###,###,###0') AS TotalRows,
+		FORMAT(qs.avg_rows , N'###,###,###0') AS AvgRows,
+		FORMAT(qs.last_rows , N'###,###,###0') AS LastRows,
+		FORMAT(qs.min_rows , N'###,###,###0') AS MinRows,
+		FORMAT(qs.max_rows , N'###,###,###0') AS MaxRows,
+		FORMAT(LEN(t.text) , N'###,###,###0') AS SQLTextLength,
+		qs.creation_time AS CompiledDateTime,
+		qs.last_execution_time AS LastExecutionDateTime,
+		FORMAT(qs.execution_count , N'###,###,###0') AS TotalExections,
+
+		FORMAT(qs.total_spills, N'###,###,###0') AS TotalSpills,
+		FORMAT(qs.avg_spills, N'###,###,###0') AS AvgSpills,
+		FORMAT(qs.last_spills, N'###,###,###0') AS LastSpills,
+		FORMAT(qs.min_spills, N'###,###,###0') AS MinSpills,
+		FORMAT(qs.max_spills, N'###,###,###0') AS MaxSpills,
+
+		OBJECT_NAME(qp.objectid) AS DatabaseObject,
+		qs.plan_generation_num AS PlanGenerationNumber,
+		t.text AS QueryPlan
+		FROM #TempDmQueryStats AS qs
+		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
+		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
+		WHERE @minTotalExecutionsOrderingAvg IS NULL 
+		OR qs.execution_count >= @minTotalExecutionsOrderingAvg
+		ORDER BY qs.avg_spills DESC;
+
+	END
+
+
+	IF @showDmGrants = 1 BEGIN
+
+		SELECT TOP(@top)
+		@@SPID AS SPID,
+		FORMAT(qs.total_rows , N'###,###,###0') AS TotalRows,
+		FORMAT(qs.avg_rows , N'###,###,###0') AS AvgRows,
+		FORMAT(qs.last_rows , N'###,###,###0') AS LastRows,
+		FORMAT(qs.min_rows , N'###,###,###0') AS MinRows,
+		FORMAT(qs.max_rows , N'###,###,###0') AS MaxRows,
+		FORMAT(LEN(t.text) , N'###,###,###0') AS SQLTextLength,
+		qs.creation_time AS CompiledDateTime,
+		qs.last_execution_time AS LastExecutionDateTime,
+		FORMAT(qs.execution_count , N'###,###,###0') AS TotalExections,
+
+		FORMAT(qs.total_grant_kb/1024, N'###,###,###0 mb') AS TotalGrants,
+		FORMAT(qs.avg_grant_kb/1024, N'###,###,###0 mb') AS AvgGrants,
+		FORMAT(qs.last_grant_kb/1024, N'###,###,###0 mb') AS LastGrants,
+		FORMAT(qs.min_grant_kb/1024, N'###,###,###0 mb') AS MinGrants,
+		FORMAT(qs.max_grant_kb/1024, N'###,###,###0 mb') AS MaxGrants,
+
+		FORMAT(qs.total_used_grant_kb/1024, N'###,###,###0 mb') AS TotalUsedGrants,
+		FORMAT(qs.avg_used_grant_kb/1024, N'###,###,###0 mb') AS AvgUsedGrants,
+		FORMAT(qs.last_used_grant_kb/1024, N'###,###,###0 mb') AS LastUsedGrants,
+		FORMAT(qs.min_used_grant_kb/1024, N'###,###,###0 mb') AS MinUsedGrants,
+		FORMAT(qs.max_used_grant_kb/1024, N'###,###,###0 mb') AS MaxUsedGrants,
+
+		FORMAT(qs.total_ideal_grant_kb/1024, N'###,###,###0 mb') AS TotalIdealGrants,
+		FORMAT(qs.avg_ideal_grant_kb/1024, N'###,###,###0 mb') AS AvgIdealGrants,
+		FORMAT(qs.last_ideal_grant_kb/1024, N'###,###,###0 mb') AS LastIdealGrants,
+		FORMAT(qs.min_ideal_grant_kb/1024, N'###,###,###0 mb') AS MinIdealGrants,
+		FORMAT(qs.max_ideal_grant_kb/1024, N'###,###,###0 mb') AS MaxIdealGrants,
+
+		OBJECT_NAME(qp.objectid) AS DatabaseObject,
+		qs.plan_generation_num AS PlanGenerationNumber,
+		t.text AS QueryPlan
+		FROM #TempDmQueryStats AS qs
+		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
+		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
+		WHERE @minTotalExecutionsOrderingAvg IS NULL 
+		OR qs.execution_count >= @minTotalExecutionsOrderingAvg
+		ORDER BY qs.avg_grant_kb DESC;
+
+	END
+
+	IF @showDmStoreParallelism = 1 BEGIN
+
+		SELECT TOP(@top)
+		@@SPID AS SPID,
+		FORMAT(qs.total_rows , N'###,###,###0') AS TotalRows,
+		FORMAT(qs.avg_rows , N'###,###,###0') AS AvgRows,
+		FORMAT(qs.last_rows , N'###,###,###0') AS LastRows,
+		FORMAT(qs.min_rows , N'###,###,###0') AS MinRows,
+		FORMAT(qs.max_rows , N'###,###,###0') AS MaxRows,
+		FORMAT(LEN(t.text) , N'###,###,###0') AS SQLTextLength,
+		qs.creation_time AS CompiledDateTime,
+		qs.last_execution_time AS LastExecutionDateTime,
+		FORMAT(qs.execution_count , N'###,###,###0') AS TotalExections,
+
+		FORMAT(qs.total_dop , N'###,###,###0') AS TotalParallelismOrDop,
+		FORMAT(qs.avg_dop , N'###,###,###0') AS AvgParallelismOrDop,
+		FORMAT(qs.last_dop , N'###,###,###0') AS LastParallelismDop,
+		FORMAT(qs.min_dop , N'###,###,###0') AS MinParallelismDop,
+		FORMAT(qs.max_dop , N'###,###,###0') AS MaxParallelismDop,
+
+		OBJECT_NAME(qp.objectid) AS DatabaseObject,
+		qs.plan_generation_num AS PlanGenerationNumber,
+		t.text AS QueryPlan
+		FROM #TempDmQueryStats AS qs
+		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
+		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
+		WHERE @minTotalExecutionsOrderingAvg IS NULL 
+		OR qs.execution_count >= @minTotalExecutionsOrderingAvg
+		ORDER BY qs.avg_dop DESC;
+
+	END
+
+	IF @showDmCpuDuration = 1 BEGIN
+
+		SELECT TOP(@top)
+		@@SPID AS SPID,
+		FORMAT(qs.total_rows , N'###,###,###0') AS TotalRows,
+		FORMAT(qs.avg_rows , N'###,###,###0') AS AvgRows,
+		FORMAT(qs.last_rows , N'###,###,###0') AS LastRows,
+		FORMAT(qs.min_rows , N'###,###,###0') AS MinRows,
+		FORMAT(qs.max_rows , N'###,###,###0') AS MaxRows,
+		FORMAT(LEN(t.text) , N'###,###,###0') AS SQLTextLength,
+		qs.creation_time AS CompiledDateTime,
+		qs.last_execution_time AS LastExecutionDateTime,
+		FORMAT(qs.execution_count , N'###,###,###0') AS TotalExections,
+
+		CONVERT(VARCHAR(10), (qs.total_worker_time/1000/86400000)) + 'd ' +
+		CONVERT(VARCHAR(10), ((qs.total_worker_time/1000%86400000)/3600000)) + 'h '+
+		CONVERT(VARCHAR(10), (((qs.total_worker_time/1000%86400000)%3600000)/60000)) + 'm '+
+		CONVERT(varchar(10), ((((qs.total_worker_time/1000%86400000)%3600000)%60000)/1000)) + 's ' +
+		CONVERT(VARCHAR(10), (((qs.total_worker_time/1000%86400000)%3600000)%1000)) + 'ms' AS TotalCpuDuration,
+
+		CONVERT(VARCHAR(10), (qs.avg_worker_time/1000/86400000)) + 'd ' +
+		CONVERT(VARCHAR(10), ((qs.avg_worker_time/1000%86400000)/3600000)) + 'h '+
+		CONVERT(VARCHAR(10), (((qs.avg_worker_time/1000%86400000)%3600000)/60000)) + 'm '+
+		CONVERT(varchar(10), ((((qs.avg_worker_time/1000%86400000)%3600000)%60000)/1000)) + 's ' +
+		CONVERT(VARCHAR(10), (((qs.avg_worker_time/1000%86400000)%3600000)%1000)) + 'ms' AS AvgCpuDuration,
+
+		CONVERT(VARCHAR(10), (qs.last_worker_time/1000/86400000)) + 'd ' +
+		CONVERT(VARCHAR(10), ((qs.last_worker_time/1000%86400000)/3600000)) + 'h '+
+		CONVERT(VARCHAR(10), (((qs.last_worker_time/1000%86400000)%3600000)/60000)) + 'm '+
+		CONVERT(varchar(10), ((((qs.last_worker_time/1000%86400000)%3600000)%60000)/1000)) + 's ' +
+		CONVERT(VARCHAR(10), (((qs.last_worker_time/1000%86400000)%3600000)%1000)) + 'ms' AS LastCpuDuration,
+
+		CONVERT(VARCHAR(10), (qs.min_worker_time/1000/86400000)) + 'd ' +
+		CONVERT(VARCHAR(10), ((qs.min_worker_time/1000%86400000)/3600000)) + 'h '+
+		CONVERT(VARCHAR(10), (((qs.min_worker_time/1000%86400000)%3600000)/60000)) + 'm '+
+		CONVERT(varchar(10), ((((qs.min_worker_time/1000%86400000)%3600000)%60000)/1000)) + 's ' +
+		CONVERT(VARCHAR(10), (((qs.min_worker_time/1000%86400000)%3600000)%1000)) + 'ms' AS MinCpuDuration,
+
+		CONVERT(VARCHAR(10), (qs.max_worker_time/1000/86400000)) + 'd ' +
+		CONVERT(VARCHAR(10), ((qs.max_worker_time/1000%86400000)/3600000)) + 'h '+
+		CONVERT(VARCHAR(10), (((qs.max_worker_time/1000%86400000)%3600000)/60000)) + 'm '+
+		CONVERT(varchar(10), ((((qs.max_worker_time/1000%86400000)%3600000)%60000)/1000)) + 's ' +
+		CONVERT(VARCHAR(10), (((qs.max_worker_time/1000%86400000)%3600000)%1000)) + 'ms' AS MaxCpuDuration,
+
+		OBJECT_NAME(qp.objectid) AS DatabaseObject,
+		qs.plan_generation_num AS PlanGenerationNumber,
+		t.text AS QueryPlan
+		FROM #TempDmQueryStats AS qs
+		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
+		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
+		WHERE @minTotalExecutionsOrderingAvg IS NULL 
+		OR qs.execution_count >= @minTotalExecutionsOrderingAvg
+		ORDER BY qs.avg_worker_time DESC;
+
+	END
+
+	IF @showDmLogicallWrites = 1 BEGIN
+
+		SELECT TOP(@top)
+		@@SPID AS SPID,
+		FORMAT(qs.total_rows , N'###,###,###0') AS TotalRows,
+		FORMAT(qs.avg_rows , N'###,###,###0') AS AvgRows,
+		FORMAT(qs.last_rows , N'###,###,###0') AS LastRows,
+		FORMAT(qs.min_rows , N'###,###,###0') AS MinRows,
+		FORMAT(qs.max_rows , N'###,###,###0') AS MaxRows,
+		FORMAT(LEN(t.text) , N'###,###,###0') AS SQLTextLength,
+		qs.creation_time AS CompiledDateTime,
+		qs.last_execution_time AS LastExecutionDateTime,
+		FORMAT(qs.execution_count , N'###,###,###0') AS TotalExections,
+
+		FORMAT(qs.total_logical_writes , N'###,###,###0') AS TotalLogicalWrites,
+		FORMAT(qs.avg_logical_writes , N'###,###,###0') AS AvgLogicalWrites,
+		FORMAT(qs.last_logical_writes , N'###,###,###0') AS LastLogicalWrites,
+		FORMAT(qs.min_logical_writes , N'###,###,###0') AS MinLogicalWrites,
+		FORMAT(qs.max_logical_writes , N'###,###,###0') AS MaxLogicalWrites,
+
+		OBJECT_NAME(qp.objectid) AS DatabaseObject,
+		qs.plan_generation_num AS PlanGenerationNumber,
+		t.text AS QueryPlan
+		FROM #TempDmQueryStats AS qs
+		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
+		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
+		WHERE @minTotalExecutionsOrderingAvg IS NULL 
+		OR qs.execution_count >= @minTotalExecutionsOrderingAvg
+		ORDER BY qs.avg_logical_writes DESC;
+
+	END
+
+	IF @showDmLogicallReads = 1 BEGIN
+
+		SELECT TOP(@top)
+		@@SPID AS SPID,
+		FORMAT(qs.total_rows , N'###,###,###0') AS TotalRows,
+		FORMAT(qs.avg_rows , N'###,###,###0') AS AvgRows,
+		FORMAT(qs.last_rows , N'###,###,###0') AS LastRows,
+		FORMAT(qs.min_rows , N'###,###,###0') AS MinRows,
+		FORMAT(qs.max_rows , N'###,###,###0') AS MaxRows,
+		FORMAT(LEN(t.text) , N'###,###,###0') AS SQLTextLength,
+		qs.creation_time AS CompiledDateTime,
+		qs.last_execution_time AS LastExecutionDateTime,
+		FORMAT(qs.execution_count , N'###,###,###0') AS TotalExections,
+
+		FORMAT(qs.total_logical_reads , N'###,###,###0') AS TotalLogicalReads,
+		FORMAT(qs.avg_logical_reads , N'###,###,###0') AS TotalLogicalReads,
+		FORMAT(qs.last_logical_reads , N'###,###,###0') AS LastLogicalReads,
+		FORMAT(qs.min_logical_reads , N'###,###,###0') AS MinLogicalReads,
+		FORMAT(qs.max_logical_reads , N'###,###,###0') AS MaxLogicalReads,
+
+		OBJECT_NAME(qp.objectid) AS DatabaseObject,
+		qs.plan_generation_num AS PlanGenerationNumber,
+		t.text AS QueryPlan
+		FROM #TempDmQueryStats AS qs
+		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
+		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
+		WHERE @minTotalExecutionsOrderingAvg IS NULL 
+		OR qs.execution_count >= @minTotalExecutionsOrderingAvg
+		ORDER BY qs.avg_logical_reads DESC;
+
+	END
+
+	IF @showDmPhysicalReads = 1 BEGIN
+
+		SELECT TOP(@top)
+		@@SPID AS SPID,
+		FORMAT(qs.total_rows , N'###,###,###0') AS TotalRows,
+		FORMAT(qs.avg_rows , N'###,###,###0') AS AvgRows,
+		FORMAT(qs.last_rows , N'###,###,###0') AS LastRows,
+		FORMAT(qs.min_rows , N'###,###,###0') AS MinRows,
+		FORMAT(qs.max_rows , N'###,###,###0') AS MaxRows,
+		FORMAT(LEN(t.text) , N'###,###,###00') AS SQLTextLength,
+		qs.creation_time AS CompiledDateTime,
+		qs.last_execution_time AS LastExecutionDateTime,
+		FORMAT(qs.execution_count , N'###,###,###00') AS TotalExections,
+
+		FORMAT(qs.total_physical_reads , N'###,###,###0') AS TotaPhysicalReads,
+		FORMAT(qs.avg_physical_reads , N'###,###,###0') AS AvgPhysicalReads,
+		FORMAT(qs.last_physical_reads , N'###,###,###0') AS LastPhysicalReads,
+		FORMAT(qs.min_physical_reads , N'###,###,###0') AS MinPhysicalReads,
+		FORMAT(qs.max_physical_reads , N'###,###,###0') AS MaxPhysicalReads,
+
+		OBJECT_NAME(qp.objectid) AS DatabaseObject,
+		qs.plan_generation_num AS PlanGenerationNumber,
+		t.text AS QueryPlan
+		FROM #TempDmQueryStats AS qs
+		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
+		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
+		WHERE @minTotalExecutionsOrderingAvg IS NULL 
+		OR qs.execution_count >= @minTotalExecutionsOrderingAvg
+		ORDER BY qs.avg_physical_reads DESC;
+
+	END
+
+	IF @showDmClrDuration = 1 BEGIN
+
+		SELECT TOP(@top)
+		@@SPID AS SPID,
+		FORMAT(qs.total_rows , N'###,###,###0') AS TotalRows,
+		FORMAT(qs.avg_rows , N'###,###,###0') AS AvgRows,
+		FORMAT(qs.last_rows , N'###,###,###0') AS LastRows,
+		FORMAT(qs.min_rows , N'###,###,###0') AS MinRows,
+		FORMAT(qs.max_rows , N'###,###,###0') AS MaxRows,
+		FORMAT(LEN(t.text) , N'###,###,###0') AS SQLTextLength,
+		qs.creation_time AS CompiledDateTime,
+		FORMAT(qs.execution_count , N'###,###,###0') AS TotalExections,
+		qs.execution_count AS TotalExections,
+
+		CONVERT(VARCHAR(10), (qs.total_clr_time/1000/86400000)) + 'd ' +
+		CONVERT(VARCHAR(10), ((qs.total_clr_time/1000%86400000)/3600000)) + 'h '+
+		CONVERT(VARCHAR(10), (((qs.total_clr_time/1000%86400000)%3600000)/60000)) + 'm '+
+		CONVERT(varchar(10), ((((qs.total_clr_time/1000%86400000)%3600000)%60000)/1000)) + 's ' +
+		CONVERT(VARCHAR(10), (((qs.total_clr_time/1000%86400000)%3600000)%1000)) + 'ms' AS TotalDuration,
+
+		CONVERT(VARCHAR(10), (qs.avg_clr_time/1000/86400000)) + 'd ' +
+		CONVERT(VARCHAR(10), ((qs.avg_clr_time/1000%86400000)/3600000)) + 'h '+
+		CONVERT(VARCHAR(10), (((qs.avg_clr_time/1000%86400000)%3600000)/60000)) + 'm '+
+		CONVERT(varchar(10), ((((qs.avg_clr_time/1000%86400000)%3600000)%60000)/1000)) + 's ' +
+		CONVERT(VARCHAR(10), (((qs.avg_clr_time/1000%86400000)%3600000)%1000)) + 'ms' AS AvgDuration,
+
+		CONVERT(VARCHAR(10), (qs.last_clr_time/1000/86400000)) + 'd ' +
+		CONVERT(VARCHAR(10), ((qs.last_clr_time/1000%86400000)/3600000)) + 'h '+
+		CONVERT(VARCHAR(10), (((qs.last_clr_time/1000%86400000)%3600000)/60000)) + 'm '+
+		CONVERT(varchar(10), ((((qs.last_clr_time/1000%86400000)%3600000)%60000)/1000)) + 's ' +
+		CONVERT(VARCHAR(10), (((qs.last_clr_time/1000%86400000)%3600000)%1000)) + 'ms' AS LastClrDuration,
+
+		CONVERT(VARCHAR(10), (qs.min_clr_time/1000/86400000)) + 'd ' +
+		CONVERT(VARCHAR(10), ((qs.min_clr_time/1000%86400000)/3600000)) + 'h '+
+		CONVERT(VARCHAR(10), (((qs.min_clr_time/1000%86400000)%3600000)/60000)) + 'm '+
+		CONVERT(varchar(10), ((((qs.min_clr_time/1000%86400000)%3600000)%60000)/1000)) + 's ' +
+		CONVERT(VARCHAR(10), (((qs.min_clr_time/1000%86400000)%3600000)%1000)) + 'ms' AS MinClrDuration,
+
+		CONVERT(VARCHAR(10), (qs.max_clr_time/1000/86400000)) + 'd ' +
+		CONVERT(VARCHAR(10), ((qs.max_clr_time/1000%86400000)/3600000)) + 'h '+
+		CONVERT(VARCHAR(10), (((qs.max_clr_time/1000%86400000)%3600000)/60000)) + 'm '+
+		CONVERT(varchar(10), ((((qs.max_clr_time/1000%86400000)%3600000)%60000)/1000)) + 's ' +
+		CONVERT(VARCHAR(10), (((qs.max_clr_time/1000%86400000)%3600000)%1000)) + 'ms' AS MaxClrDuration,
+
+		OBJECT_NAME(qp.objectid) AS DatabaseObject,
+		qs.plan_generation_num AS PlanGenerationNumber,
+		t.text AS QueryPlan
+		FROM #TempDmQueryStats AS qs
+		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
+		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
+		WHERE @minTotalExecutionsOrderingAvg IS NULL 
+		OR qs.execution_count >= @minTotalExecutionsOrderingAvg
+		ORDER BY qs.avg_clr_time DESC;
+
+	END
+
+	DROP TABLE #TempDmQueryStats
+END
 
 If @showStats = 1 BEGIN
 
@@ -330,7 +687,7 @@ END
 
 -- select * from sys.dm_db_resource_stats
 
-IF @showMemoryGrants= 1 BEGIN
+IF @showQueryStoreMemoryGrants= 1 BEGIN
 
 	SELECT 
 	s.login_name AS LoginName,
@@ -393,14 +750,14 @@ IF @showSqlServerMemoryProfile = 1 BEGIN
 		CAST(memory_utilization_percentage AS NVARCHAR(3)) + N'%' MemoryUtilizationPercentage,
 		process_physical_memory_low AS ProcessPhysicalMemoryLow,
 		process_virtual_memory_low AS ProcessVirtualMemoryLow,
-		IIF(locked_page_allocations_kb = 0, N'0', FORMAT(locked_page_allocations_kb/1024, N'###,###,###')) + N' mb' AS LockedPageAllocations,
-		FORMAT(physical_memory_in_use_kb/1024,'###,###,###') + N' mb' AS PhysicalMemoryInUse,
-		FORMAT(available_commit_limit_kb/1024, N'###,###,###') + N' mb' As AvailableCommitLimit,
-		FORMAT(virtual_address_space_available_kb/1024/1024, N'###,###,###') + N' gb' AS VirtualAddressAvailable,
-		FORMAT(virtual_address_space_reserved_kb/1024, N'###,###,###') + N' mb' AS VirtualAddressSpaceReserved,
-		FORMAT(virtual_address_space_committed_kb/1024, N'###,###,###') + N' mb' AS VirtualAddressCommitted,
-		FORMAT(total_virtual_address_space_kb/1024/1024, N'###,###,###') + N' gb' AS TotalVirtualAddressSpace,
-		IIF(large_page_allocations_kb = 0, N'0', FORMAT(large_page_allocations_kb/1024, N'###,###,###')) + N' mb' AS LargePageAllocation,
+		IIF(locked_page_allocations_kb = 0, N'0', FORMAT(locked_page_allocations_kb/1024, N'###,###,###0')) + N' mb' AS LockedPageAllocations,
+		FORMAT(physical_memory_in_use_kb/1024,'###,###,###0') + N' mb' AS PhysicalMemoryInUse,
+		FORMAT(available_commit_limit_kb/1024, N'###,###,###0') + N' mb' As AvailableCommitLimit,
+		FORMAT(virtual_address_space_available_kb/1024/1024, N'###,###,###0') + N' gb' AS VirtualAddressAvailable,
+		FORMAT(virtual_address_space_reserved_kb/1024, N'###,###,###0') + N' mb' AS VirtualAddressSpaceReserved,
+		FORMAT(virtual_address_space_committed_kb/1024, N'###,###,###0') + N' mb' AS VirtualAddressCommitted,
+		FORMAT(total_virtual_address_space_kb/1024/1024, N'###,###,###0') + N' gb' AS TotalVirtualAddressSpace,
+		IIF(large_page_allocations_kb = 0, N'0', FORMAT(large_page_allocations_kb/1024, N'###,###,###0')) + N' mb' AS LargePageAllocation,
 		page_fault_count AS PageFaultCount
 		from  sys.dm_os_process_memory;
 
@@ -685,7 +1042,7 @@ IF @showSpidSesisonLoginInformation = 1
     DROP TABLE #TempSessionsRequestAndConnections
 END
 
-IF @showDuration = 1 OR @showCpu = 1 OR @showIo = 1 OR @showMemory = 1 OR @showParallelism = 1 OR @showTotalDuration = 1 OR @showTotalExecutions = 1 BEGIN
+IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 1 OR @showQueryStoreMemory = 1 OR @showQueryStoreParallelism = 1 OR @showQueryStoreTotalDuration = 1 OR @showQueryStoreTotalExecutions = 1 BEGIN
 
     SELECT rs.*
     INTO #tempQueryStoreRuntimeStats
@@ -702,13 +1059,15 @@ IF @showDuration = 1 OR @showCpu = 1 OR @showIo = 1 OR @showMemory = 1 OR @showP
     ca_aggregate_runtime_stats.FirstExecutionTime,
     ca_aggregate_runtime_stats.LastExecutionTime,
     ca_runtime_executions.TotalExections AS TotalExections,
-    FORMAT(ca_runtime_executions.TotalExections, N'###,###,###') AS TotalExectionsAsString,
+    FORMAT(ca_runtime_executions.TotalExections, N'###,###,###0') AS TotalExectionsAsString,
     ca_runtime_executions.TotalDuration AS TotalDuration,
-    FORMAT(ca_runtime_executions.TotalDuration, N'###,###,###') + N' ms' AS TotalDurationString,
-    Convert(varchar(1000), FLOOR(ca_runtime_executions.TotalDuration/(10006060))) + N' h N' +
-	Convert(varchar(1000), FLOOR(( ca_runtime_executions.TotalDuration%(10006060))/(100060))) + N' m N' +
-	Convert(varchar(1000), FLOOR(((ca_runtime_executions.TotalDuration%(10006060))%(100060))/1000)) + N' s N' +
-	Convert(varchar(1000), FLOOR(((ca_runtime_executions.TotalDuration%(10006060))%(100060))%1000)) + N' ms' AS TotalDurationInFormatAsString,
+    FORMAT(ca_runtime_executions.TotalDuration, N'###,###,###0') + N' ms' AS TotalDurationString,
+
+	CONVERT(VARCHAR(10), (ca_runtime_executions.TotalDuration/1000/86400000)) + 'd ' +
+	CONVERT(VARCHAR(10), ((ca_runtime_executions.TotalDuration/1000%86400000)/3600000)) + 'h '+
+	CONVERT(VARCHAR(10), (((ca_runtime_executions.TotalDuration/1000%86400000)%3600000)/60000)) + 'm '+
+	CONVERT(varchar(10), ((((ca_runtime_executions.TotalDuration/1000%86400000)%3600000)%60000)/1000)) + 's ' +
+	CONVERT(VARCHAR(10), (((ca_runtime_executions.TotalDuration/1000%86400000)%3600000)%1000)) + 'ms' AS TotalDurationInFormatAsString,
 
     ca_aggregate_runtime_stats.AvgDuration AS AvgDuration,
     CONVERT(VARCHAR(100), CAST(ca_aggregate_runtime_stats.AvgDuration AS FLOAT) / 1000) + N' ms' AS AvgDurationAsString,
@@ -804,7 +1163,7 @@ IF @showDuration = 1 OR @showCpu = 1 OR @showIo = 1 OR @showMemory = 1 OR @showP
 
     DROP TABLE #tempQueryStoreRuntimeStats;
 
-    IF @showDuration = 1 BEGIN
+    IF @showQueryStoreDuration = 1 BEGIN
 
         SELECT TOP(@top)
         SPID,
@@ -828,7 +1187,7 @@ IF @showDuration = 1 OR @showCpu = 1 OR @showIo = 1 OR @showMemory = 1 OR @showP
 
     END
 
-    IF @showTotalDuration = 1 BEGIN
+    IF @showQueryStoreTotalDuration = 1 BEGIN
 
         SELECT TOP(@top)
         SPID,
@@ -851,7 +1210,7 @@ IF @showDuration = 1 OR @showCpu = 1 OR @showIo = 1 OR @showMemory = 1 OR @showP
 
     END
 
-    IF @showTotalExecutions = 1 BEGIN
+    IF @showQueryStoreTotalExecutions = 1 BEGIN
 
         SELECT TOP(@top)
         SPID,
@@ -873,7 +1232,7 @@ IF @showDuration = 1 OR @showCpu = 1 OR @showIo = 1 OR @showMemory = 1 OR @showP
     END
 
 
-    IF @showCpu = 1 BEGIN
+    IF @showQueryStoreCpu = 1 BEGIN
 
         SELECT TOP(@top)
         SPID,
@@ -897,7 +1256,7 @@ IF @showDuration = 1 OR @showCpu = 1 OR @showIo = 1 OR @showMemory = 1 OR @showP
 
     END
 
-    IF @showMemory = 1 BEGIN
+    IF @showQueryStoreMemory = 1 BEGIN
 
         SELECT TOP(@top)
         SPID,
@@ -921,7 +1280,7 @@ IF @showDuration = 1 OR @showCpu = 1 OR @showIo = 1 OR @showMemory = 1 OR @showP
 
     END
 
-    IF @showParallelism = 1 BEGIN
+    IF @showQueryStoreParallelism = 1 BEGIN
 
         SELECT TOP(@top)
         SPID,
@@ -945,7 +1304,7 @@ IF @showDuration = 1 OR @showCpu = 1 OR @showIo = 1 OR @showMemory = 1 OR @showP
 
     END
 
-    IF @showIo = 1 BEGIN
+    IF @showQueryStoreIo = 1 BEGIN
 
         SELECT TOP(@top)
         SPID,
