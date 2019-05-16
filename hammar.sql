@@ -37,7 +37,7 @@ DECLARE @showDmClrDuration BIT = 0;
 DECLARE @minTotalExecutionsOrderingAvg TINYINT = 5;
 
 DECLARE @showQueryStoreDuration BIT = 0;
-DECLARE @showQueryStoreTotalDuration BIT = 0;
+DECLARE @showQueryStoreTotalDuration BIT = 1;
 DECLARE @showQueryStoreTotalExecutions BIT = 0;
 DECLARE @showQueryStoreIo BIT = 0;
 DECLARE @showQueryStoreCpu BIT = 0;
@@ -1131,11 +1131,12 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
     ca_runtime_executions.TotalDuration AS TotalDuration,
     FORMAT(ca_runtime_executions.TotalDuration, N'###,###,###0') + N' ms' AS TotalDurationString,
 
-	CONVERT(VARCHAR(10), (ca_runtime_executions.TotalDuration/1000/86400000)) + 'd ' +
-	CONVERT(VARCHAR(10), ((ca_runtime_executions.TotalDuration/1000%86400000)/3600000)) + 'h '+
-	CONVERT(VARCHAR(10), (((ca_runtime_executions.TotalDuration/1000%86400000)%3600000)/60000)) + 'm '+
-	CONVERT(varchar(10), ((((ca_runtime_executions.TotalDuration/1000%86400000)%3600000)%60000)/1000)) + 's ' +
-	CONVERT(VARCHAR(10), (((ca_runtime_executions.TotalDuration/1000%86400000)%3600000)%1000)) + 'ms' AS TotalDurationInFormatAsString,
+    
+    CONVERT(VARCHAR(20), (ca_runtime_executions.TotalDuration/86400000)) + 'd ' +
+    CONVERT(VARCHAR(20), ((ca_runtime_executions.TotalDuration%86400000)/3600000)) + 'h '+
+    CONVERT(VARCHAR(20), (((ca_runtime_executions.TotalDuration%86400000)%3600000)/60000)) + 'm '+
+    CONVERT(varchar(20), ((((ca_runtime_executions.TotalDuration%86400000)%3600000)%60000)/1000)) + 's ' +
+    CONVERT(VARCHAR(20), (((ca_runtime_executions.TotalDuration%86400000)%3600000)%1000)) + 'ms' AS TotalDurationInFormatAsString,
 
     ca_aggregate_runtime_stats.AvgDuration AS AvgDuration,
     CONVERT(VARCHAR(100), CAST(ca_aggregate_runtime_stats.AvgDuration AS FLOAT) / 1000) + N' ms' AS AvgDurationAsString,
