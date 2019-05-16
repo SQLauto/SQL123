@@ -1,3 +1,7 @@
+DROP TABLE IF EXISTS #TempDatabases
+DROP TABLE IF EXISTS #TempTraceFlags
+DROP TABLE IF EXISTS #TempDmQueryStats
+
 DECLARE @dt DATETIME2 = DATEADD(minute, -120, GETDATE());
 DECLARE @top INT = 5;
 DECLARE @plainId INT = NULL;
@@ -27,7 +31,7 @@ DECLARE @showDmPhysicalReads BIT = 0;
 DECLARE @showDmLogicallWrites BIT = 0;
 DECLARE @showDmLogicallReads BIT = 0;
 DECLARE @showDmStoreParallelism BIT = 0;
-DECLARE @showDmGrants BIT = 1;
+DECLARE @showDmGrants BIT = 0;
 DECLARE @showDmSpills BIT = 0;
 DECLARE @showDmClrDuration BIT = 0;
 DECLARE @minTotalExecutionsOrderingAvg TINYINT = 5;
@@ -131,7 +135,15 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-		CAST(t.text AS XML)
+        SUBSTRING(t.text, (QS.statement_start_offset/2) + 1,  
+        ((
+            CASE statement_end_offset   
+                WHEN -1 THEN DATALENGTH(t.text)  
+                ELSE QS.statement_end_offset 
+            END - QS.statement_start_offset)/2
+        ) + 1) AS QueryTextInBatch,
+        t.text AS QueryText,
+		CAST(qp.query_plan AS XML) AS QueryPlan
 		FROM #TempDmQueryStats AS qs
 		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
 		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
@@ -175,8 +187,16 @@ BEGIN
 		FORMAT(qs.max_ideal_grant_kb/1024, N'###,###,###0 mb') AS MaxIdealGrants,
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
-		qs.plan_generation_num AS PlanGenerationNumber,
-		CAST(t.text AS XML)
+        qs.plan_generation_num AS PlanGenerationNumber,
+        SUBSTRING(t.text, (QS.statement_start_offset/2) + 1,  
+        ((
+            CASE statement_end_offset   
+                WHEN -1 THEN DATALENGTH(t.text)  
+                ELSE QS.statement_end_offset 
+            END - QS.statement_start_offset)/2
+        ) + 1) AS QueryTextInBatch,
+        t.text AS QueryText,
+		CAST(qp.query_plan AS XML) AS QueryPlan
 		FROM #TempDmQueryStats AS qs
 		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
 		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
@@ -208,7 +228,15 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-		CAST(t.text AS XML)
+        SUBSTRING(t.text, (QS.statement_start_offset/2) + 1,  
+        ((
+            CASE statement_end_offset   
+                WHEN -1 THEN DATALENGTH(t.text)  
+                ELSE QS.statement_end_offset 
+            END - QS.statement_start_offset)/2
+        ) + 1) AS QueryTextInBatch,
+        t.text AS QueryText,
+		CAST(qp.query_plan AS XML) AS QueryPlan
 		FROM #TempDmQueryStats AS qs
 		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
 		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
@@ -264,7 +292,15 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-		CAST(t.text AS XML)
+        SUBSTRING(t.text, (QS.statement_start_offset/2) + 1,  
+        ((
+            CASE statement_end_offset   
+                WHEN -1 THEN DATALENGTH(t.text)  
+                ELSE QS.statement_end_offset 
+            END - QS.statement_start_offset)/2
+        ) + 1) AS QueryTextInBatch,
+        t.text AS QueryText,
+		CAST(qp.query_plan AS XML) AS QueryPlan
 		FROM #TempDmQueryStats AS qs
 		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
 		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
@@ -296,7 +332,15 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-		CAST(t.text AS XML)
+        SUBSTRING(t.text, (QS.statement_start_offset/2) + 1,  
+        ((
+            CASE statement_end_offset   
+                WHEN -1 THEN DATALENGTH(t.text)  
+                ELSE QS.statement_end_offset 
+            END - QS.statement_start_offset)/2
+        ) + 1) AS QueryTextInBatch,
+        t.text AS QueryText,
+		CAST(qp.query_plan AS XML) AS QueryPlan
 		FROM #TempDmQueryStats AS qs
 		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
 		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
@@ -328,7 +372,15 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-		CAST(t.text AS XML)
+        SUBSTRING(t.text, (QS.statement_start_offset/2) + 1,  
+        ((
+            CASE statement_end_offset   
+                WHEN -1 THEN DATALENGTH(t.text)  
+                ELSE QS.statement_end_offset 
+            END - QS.statement_start_offset)/2
+        ) + 1) AS QueryTextInBatch,
+        t.text AS QueryText,
+		CAST(qp.query_plan AS XML) AS QueryPlan
 		FROM #TempDmQueryStats AS qs
 		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
 		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
@@ -360,7 +412,15 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-		CAST(t.text AS XML)
+        SUBSTRING(t.text, (QS.statement_start_offset/2) + 1,  
+        ((
+            CASE statement_end_offset   
+                WHEN -1 THEN DATALENGTH(t.text)  
+                ELSE QS.statement_end_offset 
+            END - QS.statement_start_offset)/2
+        ) + 1) AS QueryTextInBatch,
+        t.text AS QueryText,
+		CAST(qp.query_plan AS XML) AS QueryPlan
 		FROM #TempDmQueryStats AS qs
 		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
 		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
@@ -416,7 +476,15 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-		CAST(t.text AS XML)
+        SUBSTRING(t.text, (QS.statement_start_offset/2) + 1,  
+        ((
+            CASE statement_end_offset   
+                WHEN -1 THEN DATALENGTH(t.text)  
+                ELSE QS.statement_end_offset 
+            END - QS.statement_start_offset)/2
+        ) + 1) AS QueryTextInBatch,
+        t.text AS QueryText,
+		CAST(qp.query_plan AS XML) AS QueryPlan
 		FROM #TempDmQueryStats AS qs
 		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
 		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
