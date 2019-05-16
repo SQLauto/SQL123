@@ -27,10 +27,10 @@ DECLARE @showDmPhysicalReads BIT = 0;
 DECLARE @showDmLogicallWrites BIT = 0;
 DECLARE @showDmLogicallReads BIT = 0;
 DECLARE @showDmStoreParallelism BIT = 0;
-DECLARE @showDmGrants BIT = 0;
-DECLARE @showDmSpills BIT = 1
+DECLARE @showDmGrants BIT = 1;
+DECLARE @showDmSpills BIT = 0;
 DECLARE @showDmClrDuration BIT = 0;
-DECLARE @minTotalExecutionsOrderingAvg TINYINT = 2;
+DECLARE @minTotalExecutionsOrderingAvg TINYINT = 5;
 
 DECLARE @showQueryStoreDuration BIT = 0;
 DECLARE @showQueryStoreTotalDuration BIT = 0;
@@ -131,7 +131,7 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-		t.text AS QueryPlan
+		CAST(t.text AS XML)
 		FROM #TempDmQueryStats AS qs
 		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
 		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
@@ -176,7 +176,7 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-		t.text AS QueryPlan
+		CAST(t.text AS XML)
 		FROM #TempDmQueryStats AS qs
 		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
 		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
@@ -208,7 +208,7 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-		t.text AS QueryPlan
+		CAST(t.text AS XML)
 		FROM #TempDmQueryStats AS qs
 		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
 		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
@@ -264,7 +264,7 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-		t.text AS QueryPlan
+		CAST(t.text AS XML)
 		FROM #TempDmQueryStats AS qs
 		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
 		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
@@ -296,7 +296,7 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-		t.text AS QueryPlan
+		CAST(t.text AS XML)
 		FROM #TempDmQueryStats AS qs
 		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
 		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
@@ -328,7 +328,7 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-		t.text AS QueryPlan
+		CAST(t.text AS XML)
 		FROM #TempDmQueryStats AS qs
 		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
 		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
@@ -360,7 +360,7 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-		t.text AS QueryPlan
+		CAST(t.text AS XML)
 		FROM #TempDmQueryStats AS qs
 		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
 		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
@@ -416,7 +416,7 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-		t.text AS QueryPlan
+		CAST(t.text AS XML)
 		FROM #TempDmQueryStats AS qs
 		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
 		CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
