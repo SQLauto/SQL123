@@ -134,13 +134,14 @@ BEGIN
 		FORMAT(qs.max_spills, N'###,###,###0') AS MaxSpills,
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
+        qp.number AS NumberedStoreProcedure,
 		qs.plan_generation_num AS PlanGenerationNumber,
-        SUBSTRING(t.text, (QS.statement_start_offset/2) + 1,  
+        SUBSTRING(t.text, (qs.statement_start_offset/2) + 1,  
         ((
             CASE statement_end_offset   
                 WHEN -1 THEN DATALENGTH(t.text)  
-                ELSE QS.statement_end_offset 
-            END - QS.statement_start_offset)/2
+                ELSE qs.statement_end_offset 
+            END - qs.statement_start_offset)/2
         ) + 1) AS QueryTextInBatch,
         t.text AS QueryText,
 		CAST(qp.query_plan AS XML) AS QueryPlan
@@ -188,14 +189,13 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
         qs.plan_generation_num AS PlanGenerationNumber,
-        SUBSTRING(t.text, (QS.statement_start_offset/2) + 1,  
+        SUBSTRING(t.text, (qs.statement_start_offset/2) + 1,  
         ((
             CASE statement_end_offset   
                 WHEN -1 THEN DATALENGTH(t.text)  
-                ELSE QS.statement_end_offset 
-            END - QS.statement_start_offset)/2
+                ELSE qs.statement_end_offset 
+            END - qs.statement_start_offset)/2
         ) + 1) AS QueryTextInBatch,
-        t.text AS QueryText,
 		CAST(qp.query_plan AS XML) AS QueryPlan
 		FROM #TempDmQueryStats AS qs
 		CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS t
@@ -228,12 +228,12 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-        SUBSTRING(t.text, (QS.statement_start_offset/2) + 1,  
+        SUBSTRING(t.text, (qs.statement_start_offset/2) + 1,  
         ((
             CASE statement_end_offset   
                 WHEN -1 THEN DATALENGTH(t.text)  
-                ELSE QS.statement_end_offset 
-            END - QS.statement_start_offset)/2
+                ELSE qs.statement_end_offset 
+            END - qs.statement_start_offset)/2
         ) + 1) AS QueryTextInBatch,
         t.text AS QueryText,
 		CAST(qp.query_plan AS XML) AS QueryPlan
@@ -292,12 +292,12 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-        SUBSTRING(t.text, (QS.statement_start_offset/2) + 1,  
+        SUBSTRING(t.text, (qs.statement_start_offset/2) + 1,  
         ((
             CASE statement_end_offset   
                 WHEN -1 THEN DATALENGTH(t.text)  
-                ELSE QS.statement_end_offset 
-            END - QS.statement_start_offset)/2
+                ELSE qs.statement_end_offset 
+            END - qs.statement_start_offset)/2
         ) + 1) AS QueryTextInBatch,
         t.text AS QueryText,
 		CAST(qp.query_plan AS XML) AS QueryPlan
@@ -332,12 +332,12 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-        SUBSTRING(t.text, (QS.statement_start_offset/2) + 1,  
+        SUBSTRING(t.text, (qs.statement_start_offset/2) + 1,  
         ((
             CASE statement_end_offset   
                 WHEN -1 THEN DATALENGTH(t.text)  
-                ELSE QS.statement_end_offset 
-            END - QS.statement_start_offset)/2
+                ELSE qs.statement_end_offset 
+            END - qs.statement_start_offset)/2
         ) + 1) AS QueryTextInBatch,
         t.text AS QueryText,
 		CAST(qp.query_plan AS XML) AS QueryPlan
@@ -365,19 +365,19 @@ BEGIN
 		FORMAT(qs.execution_count , N'###,###,###0') AS TotalExections,
 
 		FORMAT(qs.total_logical_reads , N'###,###,###0') AS TotalLogicalReads,
-		FORMAT(qs.avg_logical_reads , N'###,###,###0') AS TotalLogicalReads,
+		FORMAT(qs.avg_logical_reads , N'###,###,###0') AS AvgLogicalReads,
 		FORMAT(qs.last_logical_reads , N'###,###,###0') AS LastLogicalReads,
 		FORMAT(qs.min_logical_reads , N'###,###,###0') AS MinLogicalReads,
 		FORMAT(qs.max_logical_reads , N'###,###,###0') AS MaxLogicalReads,
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-        SUBSTRING(t.text, (QS.statement_start_offset/2) + 1,  
+        SUBSTRING(t.text, (qs.statement_start_offset/2) + 1,  
         ((
             CASE statement_end_offset   
                 WHEN -1 THEN DATALENGTH(t.text)  
-                ELSE QS.statement_end_offset 
-            END - QS.statement_start_offset)/2
+                ELSE qs.statement_end_offset 
+            END - qs.statement_start_offset)/2
         ) + 1) AS QueryTextInBatch,
         t.text AS QueryText,
 		CAST(qp.query_plan AS XML) AS QueryPlan
@@ -412,12 +412,12 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-        SUBSTRING(t.text, (QS.statement_start_offset/2) + 1,  
+        SUBSTRING(t.text, (qs.statement_start_offset/2) + 1,  
         ((
             CASE statement_end_offset   
                 WHEN -1 THEN DATALENGTH(t.text)  
-                ELSE QS.statement_end_offset 
-            END - QS.statement_start_offset)/2
+                ELSE qs.statement_end_offset 
+            END - qs.statement_start_offset)/2
         ) + 1) AS QueryTextInBatch,
         t.text AS QueryText,
 		CAST(qp.query_plan AS XML) AS QueryPlan
@@ -476,12 +476,12 @@ BEGIN
 
 		OBJECT_NAME(qp.objectid) AS DatabaseObject,
 		qs.plan_generation_num AS PlanGenerationNumber,
-        SUBSTRING(t.text, (QS.statement_start_offset/2) + 1,  
+        SUBSTRING(t.text, (qs.statement_start_offset/2) + 1,  
         ((
             CASE statement_end_offset   
                 WHEN -1 THEN DATALENGTH(t.text)  
-                ELSE QS.statement_end_offset 
-            END - QS.statement_start_offset)/2
+                ELSE qs.statement_end_offset 
+            END - qs.statement_start_offset)/2
         ) + 1) AS QueryTextInBatch,
         t.text AS QueryText,
 		CAST(qp.query_plan AS XML) AS QueryPlan
