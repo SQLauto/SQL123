@@ -1,9 +1,12 @@
 DROP TABLE IF EXISTS #TempDatabases
 DROP TABLE IF EXISTS #TempTraceFlags
 DROP TABLE IF EXISTS #TempDmQueryStats
+DROP TABLE IF EXISTS #tempQueryStoreRuntimeStats
+DROP TABLE IF EXISTS #TempQueryStoreData;
+DROP TABLE IF EXISTS #TempSessionsRequestAndConnections
 
 DECLARE @dt DATETIME2 = DATEADD(minute, -120, GETDATE());
-DECLARE @top INT = 5;
+DECLARE @top INT = 15;
 DECLARE @plainId INT = NULL;
 DECLARE @queryId INT = NULL;
 
@@ -850,31 +853,31 @@ IF @showSpidSesisonLoginInformation = 1
 
     SELECT 
 	s.session_id AS SPID,
-	c.connect_time AS ConnectionConnectTime, 
-	c.protocol_type As ConnectionProtocolType, 
-	c.net_transport AS ConnectionNetTransport, 
-	c.client_net_address AS ConnectionClientNetAddress, 
-	c.client_tcp_port AS ConnectionTcpPort,
-    login_name AS SessionLoginName,
-    s.original_login_name AS SessionOriginalLoginName,
-    nt_user_name AS SessionNtUserName,
-    nt_domain AS SessionNtDomain,
-    login_time AS SessionLoginTime,
-	s.program_name AS ProgramName,
-    s.client_version AS SessionClientVersion,
-    s.client_interface_name AS SessionClient,
-    s.status AS SessionStatus,
-    s.cpu_time AS SessionCpuTime,
-    s.memory_usage AS SessionMemoryUsage8KBPages,
-    s.total_elapsed_time AS SessionTotalElapedTime,
-    s.total_scheduled_time As SessionTotalTimeScheduledForExection,
-    s.last_request_start_time AS SessionRequestedStartTime,
-    s.last_request_end_time AS SessionRequestedEndTime,
-    s.reads AS SessionReadsPerformed,
-    s.writes AS SessionWritesPerformed,
-    s.logical_reads AS SessionLogicalReads,
-    s.is_user_process AS SessionIsUserProcess,
-    s.text_size,
+	c.connect_time AS ConnectionConnectTimeAsDateTime, 
+	c.protocol_type As ConnectionProtocolTypeAsString, 
+	c.net_transport AS ConnectionNetTransportAsString, 
+	c.client_net_address AS ConnectionClientNetAddressAsString, 
+	c.client_tcp_port AS ConnectionTcpPortAsInt,
+    login_name AS SessionLoginNameAsString,
+    s.original_login_name AS SessionOriginalLoginNameAsString,
+    nt_user_name AS SessionNtUserNameAsString,
+    nt_domain AS SessionNtDomainAsString,
+    login_time AS SessionLoginTimeAsDateTime,
+	s.program_name AS ProgramNameAsString,
+    s.client_version AS SessionClientVersionAsInt,
+    s.client_interface_name AS SessionClientAsString,
+    s.status AS SessionStatusAsString,
+    s.cpu_time AS SessionCpuTimeAsInt,
+    s.memory_usage AS SessionMemoryUsage8KBPagesAsInt,
+    s.total_elapsed_time AS SessionTotalElapedTimeAsInt,
+    s.total_scheduled_time As SessionTotalTimeScheduledForExectionAsInt,
+    s.last_request_start_time AS SessionRequestedStartTimeAsDateTime,
+    s.last_request_end_time AS SessionRequestedEndTimeAsDateTime,
+    s.reads AS SessionReadsPerformedAsInt,
+    s.writes AS SessionWritesPerformedAsInt,
+    s.logical_reads AS SessionLogicalReadsAsInt,
+    s.is_user_process AS SessionIsUserProcessAsBit,
+    s.text_size TextSizeAsInt,
     CASE
 	 WHEN s.transaction_isolation_level = 0 THEN N'Unspecified'
 	 WHEN s.transaction_isolation_level = 1 THEN N'Read Uncomitted'
@@ -883,38 +886,38 @@ IF @showSpidSesisonLoginInformation = 1
 	 WHEN s.transaction_isolation_level = 4 THEN N'Serializable'
 	 WHEN s.transaction_isolation_level = 5 THEN N'Snapshot'
 	 ELSE N'View here https://docs.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-sessions-transact-sql?view=sql-server-2017 to find out'
-	END As SessionTransactionIsolationLevel,
-    s.lock_timeout AS SessionLockTimeout,
-    s.deadlock_priority AS SessionDeadlockPriority,
-    s.row_count AS SessionRowCount,
-    s.prev_error AS SessionPreviousError,
-    s.last_successful_logon AS SessionLastSuccessfulLogon,
-    s.last_unsuccessful_logon AS SessionLastUnSuccessfulLogon,
-    DB_NAME(s.database_id) AS SessionDatabase,
-    s.open_transaction_count AS SessionOpenTransactionCount,
-    r.start_time As RequestStartTime,
-    r.status As RequestStatus,
-    r.command As RequestCommand,
-    DB_NAME(r.database_id) AS RequestDatabase,
-    r.blocking_session_id AS RequestBlockingSessionId,
-    r.wait_type AS RequestWaitType,
-    r.wait_time AS RequestWaitTime,
-    r.last_wait_type AS RequestLastWaitType,
-    r.wait_resource AS RequestWaitResource,
-    r.sql_handle AS RequestSqlHandle,
-    r.statement_start_offset AS RequestStatementStartOffset,
-    r.statement_end_offset AS RequestStatementEndOffset,
-    r.plan_handle AS RequestPlanHandle,
-    r.user_id AS RequestUserId,
-    r.connection_id AS RequestConnectionId,
-    r.open_transaction_count AS RequestOpenTransactionCount,
-    transaction_id AS RequestTransactionId,
-    r.cpu_time AS RequestCpuTime,
-    r.total_elapsed_time AS RequestTotalElapedTime,
-    r.scheduler_id AS RequestSchedulerThatIsSchedulingTheRequest,
-    r.reads AS RequestReads,
-    r.writes AS RequestWrites,
-    r.logical_reads AS RequestLogicalReads,
+	END As SessionTransactionIsolationLevelAsString,
+    s.lock_timeout AS SessionLockTimeoutAsInt,
+    s.deadlock_priority AS SessionDeadlockPriorityAsInt,
+    s.row_count AS SessionRowCountAsInt,
+    s.prev_error AS SessionPreviousErrorAsInt,
+    s.last_successful_logon AS SessionLastSuccessfulLogonAsDateTime,
+    s.last_unsuccessful_logon AS SessionLastUnSuccessfulLogonAsDateTime,
+    DB_NAME(s.database_id) AS SessionDatabaseAsString,
+    s.open_transaction_count AS SessionOpenTransactionCountAsInt,
+    r.start_time As RequestStartTimeAsDateTime,
+    r.status As RequestStatusAsString,
+    r.command As RequestCommandAsString,
+    DB_NAME(r.database_id) AS RequestDatabaseAsString,
+    r.blocking_session_id AS RequestBlockingSessionIdAsInt,
+    r.wait_type AS RequestWaitTypeAsString,
+    r.wait_time AS RequestWaitTimeAsInt,
+    r.last_wait_type AS RequestLastWaitTypeAsString,
+    r.wait_resource AS RequestWaitResourceAsString,
+    r.sql_handle AS RequestSqlHandleAsBinary,
+    r.statement_start_offset AS RequestStatementStartOffsetAsInt,
+    r.statement_end_offset AS RequestStatementEndOffsetAsInt,
+    r.plan_handle AS RequestPlanHandleAsBinary,
+    r.user_id AS RequestUserIdAsInt,
+    r.connection_id AS RequestConnectionIdAsUniqueIdentifier,
+    r.open_transaction_count AS RequestOpenTransactionCountAsInt,
+    transaction_id AS RequestTransactionIdAsInt,
+    r.cpu_time AS RequestCpuTimeAsInt,
+    r.total_elapsed_time AS RequestTotalElapedTimeAsInt,
+    r.scheduler_id AS RequestSchedulerThatIsSchedulingTheRequestAsInt,
+    r.reads AS RequestReadsAsInt,
+    r.writes AS RequestWritesAsInt,
+    r.logical_reads AS RequestLogicalReadsAsInt,
     CASE
 	 WHEN r.transaction_isolation_level = 0 THEN N'Unspecified'
 	 WHEN r.transaction_isolation_level = 1 THEN N'Read Uncomitted'
@@ -923,16 +926,16 @@ IF @showSpidSesisonLoginInformation = 1
 	 WHEN r.transaction_isolation_level = 4 THEN N'Serializable'
 	 WHEN r.transaction_isolation_level = 5 THEN N'Snapshot'
 	 ELSE N'View here https://docs.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-sessions-transact-sql?view=sql-server-2017 to find out'
-	END As RequestTransactionIsolationLevel,
-    r.lock_timeout AS RequestLockTimeout,
-    r.deadlock_priority AS RequestDeadlockPriority,
-    r.row_count AS RequestRowCount,
-    r.prev_error AS RequestPreviousError,
-    r.nest_level AS RequestNestLevel,
-    r.granted_query_memory AS RequestQueryMemoryGrant,
-    r.dop AS RequestDegreeOfParallelismForQuery,
-    r.parallel_worker_count AS RequestParallelWorkerCount,
-	t.text AS SqlText,
+	END As RequestTransactionIsolationLevelAsString,
+    r.lock_timeout AS RequestLockTimeoutAsInt,
+    r.deadlock_priority AS RequestDeadlockPriorityAsInt,
+    r.row_count AS RequestRowCountAsInt,
+    r.prev_error AS RequestPreviousErrorAsInt,
+    r.nest_level AS RequestNestLevelAsInt,
+    r.granted_query_memory AS RequestQueryMemoryGrantAsInt,
+    r.dop AS RequestDegreeOfParallelismForQueryAsInt,
+    r.parallel_worker_count AS RequestParallelWorkerCountAsInt,
+	t.text AS SqlTextAsString,
 	CAST(qp.query_plan AS XML) AS ExecutionPlan
     INTO #TempSessionsRequestAndConnections
     FROM sys.dm_exec_sessions s
@@ -970,37 +973,27 @@ IF @showSpidSesisonLoginInformation = 1
 
     IF @showSpidSesisonLoginInformation = 1 OR @showUserConnections = 1 BEGIN
 
-        -- select scheduler_id, cpu_id, status, is_online 
-        -- from sys.dm_os_schedulers 
-        -- where status = 'VISIBLE ONLINE'
-
-        -- select * from sysprocesses
-        -- -- where status = 'runnable' --comment this out
-        -- order by CPU
-        -- desc
-
-
         SELECT 
 		SPID,
-		ConnectionConnectTime, 
-		ConnectionProtocolType, 
-		ConnectionNetTransport, 
-		ConnectionClientNetAddress, 
-		ConnectionTcpPort,
-        SessionDatabase,
-        SessionLoginName
-		SessionNtUserName,
-        SessionNtDomain,
-		SessionLoginTime,
-        SessionClient,
-        SessionClientVersion,
-        SessionIsUserProcess,
-        SessionStatus,
-        CAST(SessionTotalElapedTime AS NVARCHAR(50)) + ' ms' AS SessionTotalElapedTime,
-        SessionRequestedStartTime,
-        SessionRequestedEndTime,
-        SessionLastSuccessfulLogon,
-        SessionLastUnSuccessfulLogon
+		ConnectionConnectTimeAsDateTime, 
+		ConnectionProtocolTypeAsString, 
+		ConnectionNetTransportAsString, 
+		ConnectionClientNetAddressAsString, 
+		ConnectionTcpPortAsInt,
+        SessionDatabaseAsString,
+        SessionLoginNameAsString,
+		SessionNtUserNameAsString,
+        SessionNtDomainAsString,
+		SessionLoginTimeAsDateTime,
+        SessionClientAsString,
+        SessionClientVersionAsInt,
+        SessionIsUserProcessAsBit,
+        SessionStatusAsString,
+        CAST(SessionTotalElapedTimeAsInt AS NVARCHAR(50)) + ' ms' AS SessionTotalElapedTime,
+        SessionRequestedStartTimeAsDateTime,
+        SessionRequestedEndTimeAsDateTime,
+        SessionLastSuccessfulLogonAsDateTime,
+        SessionLastUnSuccessfulLogonAsDateTime
         FROM #TempSessionsRequestAndConnections
         WHERE @showUserConnections = 1 OR SPID = @@SPID
 
@@ -1010,19 +1003,19 @@ IF @showSpidSesisonLoginInformation = 1
 
         SELECT
         SPID,
-        SessionDatabase,
-        SessionLoginName,
-        SessionStatus,
-        SessionCpuTime,
-        SessionMemoryUsage8KBPages,
-        SessionReadsPerformed,
-        SessionWritesPerformed,
-        SessionLogicalReads,
-        SessionTransactionIsolationLevel,
-        SessionLockTimeout
-		SessionDeadlockPriority,
-        SessionRowCount,
-        SessionPreviousError
+        SessionDatabaseAsString,
+        SessionLoginNameAsString,
+        SessionStatusAsString,
+        SessionCpuTimeAsInt,
+        SessionMemoryUsage8KBPagesAsInt,
+        SessionReadsPerformedAsInt,
+        SessionWritesPerformedAsInt,
+        SessionLogicalReadsAsInt,
+        SessionTransactionIsolationLevelAsString,
+        SessionLockTimeoutAsInt
+		SessionDeadlockPriorityAsInt,
+        SessionRowCountAsInt,
+        SessionPreviousErrorAsInt
         FROM #TempSessionsRequestAndConnections
         WHERE SPID = @@SPID
 
@@ -1032,23 +1025,23 @@ IF @showSpidSesisonLoginInformation = 1
 
         SELECT
         SPID,
-        RequestDatabase,
-        RequestStartTime,
-        RequestStatus,
-        RequestOpenTransactionCount AS N'Open Trans Count',
-        RequestTransactionId,
-        RequestCpuTime,
-        RequestTotalElapedTime,
-        RequestReads,
-        RequestWrites,
-        RequestLogicalReads,
-        RequestTransactionIsolationLevel,
-        RequestLockTimeout,
-        RequestDeadlockPriority,
-        RequestRowCount,
-        RequestPreviousError,
-        RequestNestLevel,
-        RequestParallelWorkerCount
+        RequestDatabaseAsString,
+        RequestStartTimeAsDateTime,
+        RequestStatusAsString,
+        RequestOpenTransactionCountAsInt,
+        RequestTransactionIdAsInt,
+        RequestCpuTimeAsInt,
+        RequestTotalElapedTimeAsInt,
+        RequestReadsAsInt,
+        RequestWritesAsInt,
+        RequestLogicalReadsAsInt,
+        RequestTransactionIsolationLevelAsString,
+        RequestLockTimeoutAsInt,
+        RequestDeadlockPriorityAsInt,
+        RequestRowCountAsInt,
+        RequestPreviousErrorAsInt,
+        RequestNestLevelAsInt,
+        RequestParallelWorkerCountAsInt
         FROM #TempSessionsRequestAndConnections
         WHERE SPID = @@SPID
 
@@ -1058,13 +1051,13 @@ IF @showSpidSesisonLoginInformation = 1
 
         SELECT
         SPID,
-        SessionDatabase,
-        RequestCommand,
-        RequestBlockingSessionId,
-        RequestWaitType,
-        RequestWaitTime,
-        RequestLastWaitType,
-        RequestWaitResource
+        SessionDatabaseAsString,
+        RequestCommandAsString,
+        RequestBlockingSessionIdAsInt,
+        RequestWaitTypeAsString,
+        RequestWaitTimeAsInt,
+        RequestLastWaitTypeAsString,
+        RequestWaitResourceAsString
         FROM #TempSessionsRequestAndConnections
         WHERE SPID = @@SPID
 
@@ -1074,35 +1067,29 @@ IF @showSpidSesisonLoginInformation = 1
 
         SELECT
         SPID,
-        SessionDatabase,
-        RequestCommand,
+        SessionDatabaseAsString,
+        RequestCommandAsString,
         sqlText.text As SqlText,
-        substring
-		(REPLACE
-		(REPLACE
-			(SUBSTRING
-			(sqlText.text
-			, (r.RequestStatementStartOffset/2) + 1
-			, (
-				(CASE RequestStatementEndOffset
-					WHEN -1
-					THEN DATALENGTH(sqlText.text)  
-					ELSE r.RequestStatementEndOffset
-					END
-					- r.RequestStatementStartOffset)/2) + 1)
-		, CHAR(10), N' N'), CHAR(13), N' N'), 1, 512)  AS N'Currently Executing',
-        RequestQueryMemoryGrant,
-        RequestCpuTime,
-        RequestLogicalReads,
-        RequestRowCount,
-        RequestPreviousError,
-        RequestDegreeOfParallelismForQuery,
-        RequestStatementStartOffset,
-        RequestStatementEndOffset,
-        CAST(planHandle.query_plan AS XML) AS N'Execution Plan' 
+		SUBSTRING(sqlText.text, (r.RequestStatementStartOffsetAsInt/2) + 1,  
+        ((
+            CASE r.RequestStatementEndOffsetAsInt 
+                WHEN -1 THEN DATALENGTH(sqlText.text)  
+                ELSE r.RequestStatementEndOffsetAsInt
+            END - r.RequestStatementStartOffsetAsInt)/2
+        ) + 1) AS QueryTextInBatch,
+        sqlText.text AS QueryText,
+        RequestQueryMemoryGrantAsInt,
+        RequestCpuTimeAsInt,
+        RequestLogicalReadsAsInt,
+        RequestRowCountAsInt,
+        RequestPreviousErrorAsInt,
+        RequestDegreeOfParallelismForQueryAsInt,
+        RequestStatementStartOffsetAsInt,
+        RequestStatementEndOffsetAsInt,
+        CAST(planHandle.query_plan AS XML) AS QueryPlan
         FROM #TempSessionsRequestAndConnections AS r
-		CROSS APPLY sys.dm_exec_sql_text(r.RequestSqlHandle) AS sqlText
-		CROSS APPLY sys.dm_exec_query_plan(r.RequestPlanHandle) AS planHandle
+		CROSS APPLY sys.dm_exec_sql_text(r.RequestSqlHandleAsBinary) AS sqlText
+		CROSS APPLY sys.dm_exec_query_plan(r.RequestPlanHandleAsBinary) AS planHandle
         WHERE SPID = @@SPID
 
     END
@@ -1123,70 +1110,70 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
     qsp.plan_id,
     qsq.query_id,
     qsq.object_id,
-    OBJECT_NAME(qsq.object_id) AS N'Database Object',
+    OBJECT_NAME(qsq.object_id) AS DatabaseObject,
     ca_aggregate_runtime_stats.FirstExecutionTime,
     ca_aggregate_runtime_stats.LastExecutionTime,
-    ca_runtime_executions.TotalExections AS TotalExections,
+    ca_runtime_executions.TotalExections AS TotalExectionsAsInt,
     FORMAT(ca_runtime_executions.TotalExections, N'###,###,###0') AS TotalExectionsAsString,
-    ca_runtime_executions.TotalDuration AS TotalDuration,
+    ca_runtime_executions.TotalDuration AS TotalDurationAsInt,
     FORMAT(ca_runtime_executions.TotalDuration, N'###,###,###0') + N' ms' AS TotalDurationString,
 
     
-    CONVERT(VARCHAR(20), (ca_runtime_executions.TotalDuration/86400000)) + 'd ' +
-    CONVERT(VARCHAR(20), ((ca_runtime_executions.TotalDuration%86400000)/3600000)) + 'h '+
-    CONVERT(VARCHAR(20), (((ca_runtime_executions.TotalDuration%86400000)%3600000)/60000)) + 'm '+
-    CONVERT(varchar(20), ((((ca_runtime_executions.TotalDuration%86400000)%3600000)%60000)/1000)) + 's ' +
-    CONVERT(VARCHAR(20), (((ca_runtime_executions.TotalDuration%86400000)%3600000)%1000)) + 'ms' AS TotalDurationInFormatAsString,
+    CONVERT(VARCHAR(10), (ca_runtime_executions.TotalDuration/86400000)) + 'd ' +
+    CONVERT(VARCHAR(10), ((ca_runtime_executions.TotalDuration%86400000)/3600000)) + 'h '+
+    CONVERT(VARCHAR(10), (((ca_runtime_executions.TotalDuration%86400000)%3600000)/60000)) + 'm '+
+    CONVERT(varchar(10), ((((ca_runtime_executions.TotalDuration%86400000)%3600000)%60000)/1000)) + 's ' +
+    CONVERT(VARCHAR(10), (((ca_runtime_executions.TotalDuration%86400000)%3600000)%1000)) + 'ms' AS TotalDurationInFormatAsString,
 
-    ca_aggregate_runtime_stats.AvgDuration AS AvgDuration,
-    CONVERT(VARCHAR(100), CAST(ca_aggregate_runtime_stats.AvgDuration AS FLOAT) / 1000) + N' ms' AS AvgDurationAsString,
+    ca_aggregate_runtime_stats.AvgDuration AS AvgDurationAsInt,
+    CONVERT(VARCHAR(10), CAST(ca_aggregate_runtime_stats.AvgDuration AS FLOAT) / 1000) + N' ms' AS AvgDurationAsString,
     ca_aggregate_runtime_stats.LastDuration AS LastDuration,
-    CONVERT(VARCHAR(100), CAST(ca_aggregate_runtime_stats.LastDuration AS FLOAT) / 1000) + N' ms' AS LastDurationAsString,
+    CONVERT(VARCHAR(10), CAST(ca_aggregate_runtime_stats.LastDuration AS FLOAT) / 1000) + N' ms' AS LastDurationAsString,
     ca_aggregate_runtime_stats.MinDuration AS MinDuration,
-    CONVERT(VARCHAR(100), CAST(ca_aggregate_runtime_stats.MinDuration AS FLOAT) / 1000) + N' ms' AS MinDurationAsString,
+    CONVERT(VARCHAR(10), CAST(ca_aggregate_runtime_stats.MinDuration AS FLOAT) / 1000) + N' ms' AS MinDurationAsString,
     ca_aggregate_runtime_stats.MaxDuration AS MaxDuration,
-    CONVERT(VARCHAR(100), CAST(ca_aggregate_runtime_stats.MaxDuration AS FLOAT) / 1000) + N' ms' AS MaxDurationAsString,
-    LEN(qsqt.query_sql_text) AS SQLTextLength,
+    CONVERT(VARCHAR(10), CAST(ca_aggregate_runtime_stats.MaxDuration AS FLOAT) / 1000) + N' ms' AS MaxDurationAsString,
+    FORMAT(LEN(qsqt.query_sql_text), N'###,###,###0') AS SQLTextLength,
     qsqt.query_sql_text,
-    ca_queries_for_plan.total_queries_for_plan AS N'Queries For Plan',
+    ca_queries_for_plan.total_queries_for_plan AS QueriesForPlan,
     ca_aggregate_runtime_stats.AvgRowCount,
     ca_aggregate_runtime_stats.LastRowCount,
     ca_aggregate_runtime_stats.MaxRowCount,
     ca_aggregate_runtime_stats.MinRowCount,
     ca_aggregate_runtime_stats.AvgCpuTime AS AvgCpuTime,
-    CONVERT(VARCHAR(100), CAST(ca_aggregate_runtime_stats.AvgCpuTime AS FLOAT) / 1000) + N' ms' AS AvgCpuTimeAsString,
+    CONVERT(VARCHAR(10), CAST(ca_aggregate_runtime_stats.AvgCpuTime AS FLOAT) / 1000) + N' ms' AS AvgCpuTimeAsString,
     ca_aggregate_runtime_stats.LastCpuTime AS LastCpuTime,
-    CONVERT(VARCHAR(100), CAST(ca_aggregate_runtime_stats.LastCpuTime AS FLOAT) / 1000) + N' ms' AS LastCpuTimeAsString,
+    CONVERT(VARCHAR(10), CAST(ca_aggregate_runtime_stats.LastCpuTime AS FLOAT) / 1000) + N' ms' AS LastCpuTimeAsString,
     ca_aggregate_runtime_stats.MinCpuTime AS MinCpuTime,
-    CONVERT(VARCHAR(100), CAST(ca_aggregate_runtime_stats.MinCpuTime AS FLOAT) / 1000) + N' ms' AS MinCpuTimeAsString,
+    CONVERT(VARCHAR(10), CAST(ca_aggregate_runtime_stats.MinCpuTime AS FLOAT) / 1000) + N' ms' AS MinCpuTimeAsString,
     ca_aggregate_runtime_stats.MaxCpuTime AS MaxCpuTime,
-    CONVERT(VARCHAR(100), CAST(ca_aggregate_runtime_stats.MaxCpuTime AS FLOAT) / 1000) + N' ms' AS MaxCpuTimeAsString,
-    ca_aggregate_runtime_stats.AvgMaxUsedMemory * 0.001 AS AvgMemoryInMegabytes,
-    ca_aggregate_runtime_stats.LastMaxUsedMemory * 0.001 AS LastMemoryInMegabytes,
-    ca_aggregate_runtime_stats.MinMaxUsedMemory * 0.001 AS MinMemoryInMegabytes,
-    ca_aggregate_runtime_stats.MaxMaxUsedMemory * 0.001 AS MaxMemoryInMegabytes,
-    ca_aggregate_runtime_stats.AvgDop AS AvgDegreeOfParallelism,
-    ca_aggregate_runtime_stats.LastDop AS LastDegreeOfParallelism,
-    ca_aggregate_runtime_stats.MinDop AS MinDegreeOfParallelism,
-    ca_aggregate_runtime_stats.MaxDop AS MaxDegreeOfParallelism,
-    ca_aggregate_runtime_stats.AvgLogicalIoReads,
-    ca_aggregate_runtime_stats.LastLogicalIoReads,
-    ca_aggregate_runtime_stats.MinLogicalIoReads,
-    ca_aggregate_runtime_stats.MaxLogicalIoReads,
-    ca_aggregate_runtime_stats.AvgLogicalIoWrites,
-    ca_aggregate_runtime_stats.LastLogicalIoWrites,
-    ca_aggregate_runtime_stats.MinLogicalIoWrites,
-    ca_aggregate_runtime_stats.MaxLogicalIoWrites,
-    ca_aggregate_runtime_stats.AvgPhysicalIoReads,
-    ca_aggregate_runtime_stats.LastPhysicalIoReads,
-    ca_aggregate_runtime_stats.MinPhysicalIoReads,
-    ca_aggregate_runtime_stats.MaxPhysicalIoReads,
-    ca_aggregate_runtime_stats.AvgNumPhysicalIoReads,
-    ca_aggregate_runtime_stats.LastNumPhysicalIoReads,
-    ca_aggregate_runtime_stats.MinNumPhysicalIoReads,
-    ca_aggregate_runtime_stats.MaxNumPhysicalIoReads,
-    CAST(qsp.query_plan AS XML) AS N'Execution Plan'
-    INTO #QueryStoreData
+    CONVERT(VARCHAR(10), CAST(ca_aggregate_runtime_stats.MaxCpuTime AS FLOAT) / 1000) + N' ms' AS MaxCpuTimeAsString,
+    ca_aggregate_runtime_stats.AvgMaxUsedMemory * 0.001 AS AvgMemoryInMegabytesAsInt,
+    ca_aggregate_runtime_stats.LastMaxUsedMemory * 0.001 AS LastMemoryInMegabytesAsInt,
+    ca_aggregate_runtime_stats.MinMaxUsedMemory * 0.001 AS MinMemoryInMegabytesAsInt,
+    ca_aggregate_runtime_stats.MaxMaxUsedMemory * 0.001 AS MaxMemoryInMegabytesAsInt,
+    ca_aggregate_runtime_stats.AvgDop AS AvgDegreeOfParallelismAsInt,
+    ca_aggregate_runtime_stats.LastDop AS LastDegreeOfParallelismAsInt,
+    ca_aggregate_runtime_stats.MinDop AS MinDegreeOfParallelismAsInt,
+    ca_aggregate_runtime_stats.MaxDop AS MaxDegreeOfParallelismAsInt,
+    ca_aggregate_runtime_stats.AvgLogicalIoReads AS AvgLogicalIoReadsAsInt,
+    ca_aggregate_runtime_stats.LastLogicalIoReads AS LastLogicalIoReadsAsInt,
+    ca_aggregate_runtime_stats.MinLogicalIoReads AS MinLogicalIoReadAsInt,
+    ca_aggregate_runtime_stats.MaxLogicalIoReads AS MaxLogicalIoReadsAsInt,
+    ca_aggregate_runtime_stats.AvgLogicalIoWrites AS AvgLogicalIoWritesAsInt,
+    ca_aggregate_runtime_stats.LastLogicalIoWrites AS LastLogicalIoWritesAsInt,
+    ca_aggregate_runtime_stats.MinLogicalIoWrites AS MinLogicalIoWritesAsInt,
+    ca_aggregate_runtime_stats.MaxLogicalIoWrites AS MaxLogicalIoWritesAsInt,
+    ca_aggregate_runtime_stats.AvgPhysicalIoReads AS AvgPhysicalIoReadsAsInt,
+    ca_aggregate_runtime_stats.LastPhysicalIoReads AS LastPhysicalIoReadsAsInt,
+    ca_aggregate_runtime_stats.MinPhysicalIoReads AS MinPhysicalIoReadsAsInt,
+    ca_aggregate_runtime_stats.MaxPhysicalIoReads AS MaxPhysicalIoReadsAsInt,
+    ca_aggregate_runtime_stats.AvgNumPhysicalIoReads AS AvgNumPhysicalIoReadsAsInt,
+    ca_aggregate_runtime_stats.LastNumPhysicalIoReads AS LastNumPhysicalIoReadsAsInt,
+    ca_aggregate_runtime_stats.MinNumPhysicalIoReads AS MinNumPhysicalIoReadsAsInt,
+    ca_aggregate_runtime_stats.MaxNumPhysicalIoReads AS MaxNumPhysicalIoReadsAsInt,
+    CAST(qsp.query_plan AS XML) AS QueryPlan
+    INTO #TempQueryStoreData
     FROM sys.query_store_plan qsp (NOLOCK)
     INNER JOIN sys.query_store_query qsq (NOLOCK)
     ON qsp.query_id = qsq.query_id
@@ -1211,7 +1198,7 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
 	) ca_aggregate_runtime_stats
 	CROSS APPLY
 	(
-		SELECT CONVERT(int, SUM(rs.avg_duration))*0.001 AS TotalDuration,
+		SELECT CONVERT(INT, SUM(rs.avg_duration)) AS TotalDuration,
         SUM(rs.count_executions) AS TotalExections
         FROM #tempQueryStoreRuntimeStats rs (NOLOCK)
         WHERE rs.plan_id = qsp.plan_id
@@ -1238,21 +1225,21 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
-        TotalExections,
+        TotalExectionsAsString,
         SQLTextLength,
         AvgDurationAsString,
         LastDurationAsString,
         MinDurationAsString,
         MaxDurationAsString,
-        [Database Object],
+        DatabaseObject,
         object_id,
         FirstExecutionTime,
         LastExecutionTime,
         query_sql_text,
-        [Queries For Plan],
-        [Execution Plan]
-        FROM #QueryStoreData
-        ORDER BY AvgDuration DESC
+        QueriesForPlan,
+        QueryPlan
+        FROM #TempQueryStoreData
+        ORDER BY AvgDurationAsInt DESC
 
     END
 
@@ -1262,20 +1249,19 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
-        TotalExections,
+        TotalExectionsAsString,
         SQLTextLength,
-        TotalDuration,
-        TotalDurationString,
-        TotalDurationInFormatAsString,
-        [Database Object],
+        TotalDurationString AS TotalDurations,
+        TotalDurationInFormatAsString AS TotalDurationFormatted,
+        DatabaseObject,
         object_id,
         FirstExecutionTime,
         LastExecutionTime,
-        query_sql_text,
-        [Queries For Plan],
-        [Execution Plan]
-        FROM #QueryStoreData
-        ORDER BY TotalDuration DESC
+        query_sql_text AS QueryText,
+        QueriesForPlan,
+        QueryPlan
+        FROM #TempQueryStoreData
+        ORDER BY TotalDurationAsInt DESC
 
     END
 
@@ -1285,18 +1271,18 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
-        TotalExections,
+        TotalExectionsAsString,
         TotalExectionsAsString,
         SQLTextLength,
-        [Database Object],
+        DatabaseObject,
         object_id,
         FirstExecutionTime,
         LastExecutionTime,
         query_sql_text,
-        [Queries For Plan],
-        [Execution Plan]
-        FROM #QueryStoreData
-        ORDER BY TotalExections DESC
+        QueriesForPlan,
+        QueryPlan
+        FROM #TempQueryStoreData
+        ORDER BY TotalExectionsAsInt DESC
 
     END
 
@@ -1307,20 +1293,20 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
-        TotalExections,
+        TotalExectionsAsString,
         SQLTextLength,
         AvgCpuTimeAsString,
         LastCpuTimeAsString,
         MinCpuTimeAsString,
         MaxCpuTimeAsString,
-        [Database Object],
+        DatabaseObject,
         object_id,
         FirstExecutionTime,
         LastExecutionTime,
         query_sql_text,
-        [Queries For Plan],
-        [Execution Plan]
-        FROM #QueryStoreData
+        QueriesForPlan,
+        QueryPlan
+        FROM #TempQueryStoreData
         ORDER BY AvgCpuTime DESC
 
     END
@@ -1331,21 +1317,21 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
-        TotalExections,
+        TotalExectionsAsString,
         SQLTextLength,
-        AvgMemoryInMegabytes,
-        LastMemoryInMegabytes,
-        MinMemoryInMegabytes,
-        MaxMemoryInMegabytes,
-        [Database Object],
+        AvgMemoryInMegabytesAsInt,
+        LastMemoryInMegabytesAsInt,
+        MinMemoryInMegabytesAsInt,
+        MaxMemoryInMegabytesAsInt,
+        DatabaseObject,
         object_id,
         FirstExecutionTime,
         LastExecutionTime,
         query_sql_text,
-        [Queries For Plan],
-        [Execution Plan]
-        FROM #QueryStoreData
-        ORDER BY AvgMemoryInMegabytes DESC
+        QueriesForPlan,
+        QueryPlan
+        FROM #TempQueryStoreData
+        ORDER BY AvgMemoryInMegabytesAsInt DESC
 
     END
 
@@ -1355,21 +1341,21 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
-        TotalExections,
+        TotalExectionsAsString,
         SQLTextLength,
-        AvgDegreeOfParallelism,
-        LastDegreeOfParallelism,
-        MinDegreeOfParallelism,
-        MaxDegreeOfParallelism,
-        [Database Object],
+        AvgDegreeOfParallelismAsInt,
+        LastDegreeOfParallelismAsInt,
+        MinDegreeOfParallelismAsInt,
+        MaxDegreeOfParallelismAsInt,
+        DatabaseObject,
         object_id,
         FirstExecutionTime,
         LastExecutionTime,
         query_sql_text,
-        [Queries For Plan],
-        [Execution Plan]
-        FROM #QueryStoreData
-        ORDER BY AvgDegreeOfParallelism DESC
+        QueriesForPlan,
+        QueryPlan
+        FROM #TempQueryStoreData
+        ORDER BY AvgDegreeOfParallelismAsInt DESC
 
     END
 
@@ -1379,37 +1365,37 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
-        TotalExections,
+        TotalExectionsAsString,
         SQLTextLength,
-        AvgLogicalIoReads,
-        LastLogicalIoReads,
-        MinLogicalIoReads,
-        MaxLogicalIoReads,
-        AvgLogicalIoWrites,
-        LastLogicalIoWrites,
-        MinLogicalIoWrites,
-        MaxLogicalIoWrites,
-        AvgPhysicalIoReads,
-        LastPhysicalIoReads,
-        MinPhysicalIoReads,
-        MaxPhysicalIoReads,
-        AvgNumPhysicalIoReads,
-        LastNumPhysicalIoReads,
-        MinNumPhysicalIoReads,
-        MaxNumPhysicalIoReads,
-        [Database Object],
+        AvgLogicalIoReadsAsInt,
+        LastLogicalIoReadsAsInt,
+        MinLogicalIoReadsAsInt,
+        MaxLogicalIoReadsAsInt,
+        AvgLogicalIoWritesAsInt,
+        LastLogicalIoWritesAsInt,
+        MinLogicalIoWritesAsInt,
+        MaxLogicalIoWritesAsInt,
+        AvgPhysicalIoReadsAsInt,
+        LastPhysicalIoReadsAsInt,
+        MinPhysicalIoReadsAsInt,
+        MaxPhysicalIoReadsAsInt,
+        AvgNumPhysicalIoReadsAsInt,
+        LastNumPhysicalIoReadsAsInt,
+        MinNumPhysicalIoReadsAsInt,
+        MaxNumPhysicalIoReadsAsInt,
+        DatabaseObject,
         object_id,
         FirstExecutionTime,
         LastExecutionTime,
         query_sql_text,
-        [Queries For Plan],
-        [Execution Plan]
-        FROM #QueryStoreData
-        ORDER BY AvgLogicalIoReads DESC
+        QueriesForPlan,
+        QueryPlan
+        FROM #TempQueryStoreData
+        ORDER BY AvgLogicalIoReadsAsInt DESC
 
     END
 
-    DROP TABLE #QueryStoreData
+    DROP TABLE #TempQueryStoreData
 END
 
 DROP TABLE #TempDatabases
@@ -1448,3 +1434,12 @@ DROP TABLE #TempTraceFlags
 -- know your baseline cpu usage for the past few weeks during different times
 -- how many log flushes
 -- how many batche requests
+
+        -- select scheduler_id, cpu_id, status, is_online 
+        -- from sys.dm_os_schedulers 
+        -- where status = 'VISIBLE ONLINE'
+
+        -- select * from sysprocesses
+        -- -- where status = 'runnable' --comment this out
+        -- order by CPU
+        -- desc
