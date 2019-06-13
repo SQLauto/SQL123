@@ -72,21 +72,21 @@ DECLARE @productUpdateLevel SQL_VARIANT =     SERVERPROPERTY(N'ProductUpdateLeve
 DECLARE @productUpdateReference SQL_VARIANT = SERVERPROPERTY(N'ProductUpdateReference');
 DECLARE @compatibilityLevel TINYINT = (SELECT TOP 1 compatibility_level FROM #TempDatabases WHERE name =  DB_NAME());
 
-CREATE TABLE #TempTraceFlags (Name INT, Status INT, Global INT, Session INT)
-INSERT INTO #TempTraceFlags  exec('DBCC TRACESTATUS()');
+-- CREATE TABLE #TempTraceFlags (Name INT, Status INT, Global INT, Session INT)
+-- INSERT INTO #TempTraceFlags  exec('DBCC TRACESTATUS()');
 
---SELECT 
---@@version as PrettyPrintVersion,
---SERVERPROPERTY(N'ProductMajorVersion') AS ProductMajorVersion, 
---SERVERPROPERTY(N'ProductMinorVersion') AS ProductMinorVersion, 
---SERVERPROPERTY(N'ProductUpdateLevel') AS ProductUpdateLevel, 
---SERVERPROPERTY(N'ProductUpdateReference') AS ProductUpdateReference, 
+-- SELECT 
+-- @@version as PrettyPrintVersion,
+-- SERVERPROPERTY(N'ProductMajorVersion') AS ProductMajorVersion, 
+-- SERVERPROPERTY(N'ProductMinorVersion') AS ProductMinorVersion, 
+-- SERVERPROPERTY(N'ProductUpdateLevel') AS ProductUpdateLevel, 
+-- SERVERPROPERTY(N'ProductUpdateReference') AS ProductUpdateReference, 
  
---SERVERPROPERTY(N'ProductVersion') AS ProductVersion, 
---SERVERPROPERTY (N'productlevel') AS ProductLevel, 
---SERVERPROPERTY (N'Edition') AS Edition, 
---IIF(SERVERPROPERTY(N'IsClustered') = 0, N'Not Clusterd', N'Clustered') AS IsClustered,
---IIF(SERVERPROPERTY(N'IsIntegratedSecurityOnly') = 0, N'Both Windows Authentication and SQL Server Authentication', N'Integrated security (Windows Authentication)') AS IntegratedSecurity
+-- SERVERPROPERTY(N'ProductVersion') AS ProductVersion, 
+-- SERVERPROPERTY (N'productlevel') AS ProductLevel, 
+-- SERVERPROPERTY (N'Edition') AS Edition, 
+-- IIF(SERVERPROPERTY(N'IsClustered') = 0, N'Not Clusterd', N'Clustered') AS IsClustered,
+-- IIF(SERVERPROPERTY(N'IsIntegratedSecurityOnly') = 0, N'Both Windows Authentication and SQL Server Authentication', N'Integrated security (Windows Authentication)') AS IntegratedSecurity
 
 
 IF 
@@ -792,6 +792,7 @@ BEGIN
     ORDER BY DataPointLimitType, EndDteTime DESC
 
 END
+
 ELSE IF @isAzure = 1 AND
     (
         @showAllAzureLimits = 1
@@ -807,13 +808,9 @@ ELSE IF @isAzure = 1 AND
         OR @showAzureInstanceMemory = 1
     )
 BEGIN
-
     SELECT 'Must be Azure SQL Database to use DTU or CPU Limits'
-
 END
 
-
--- select * from sys.dm_db_resource_stats
 
 IF @showQueryStoreMemoryGrants= 1 BEGIN
 
@@ -847,6 +844,8 @@ IF @showQueryStoreMemoryGrants= 1 BEGIN
 	CROSS APPLY sys.dm_exec_query_plan(mg.plan_handle) qp
 
 END
+
+
 
 IF @showSqlServerMemoryProfile = 1 BEGIN
 
@@ -898,8 +897,9 @@ IF @showSqlServerMemoryProfile = 1 BEGIN
 		@memoryPressurePercent AS N'MemoryPressure(Higher is better)'
 
 	END
-
 END
+
+
 
 IF @showSpidSesisonLoginInformation = 1 
 	OR @showSpidSessionRuntimeStats = 1 
@@ -907,6 +907,8 @@ IF @showSpidSesisonLoginInformation = 1
 	OR @showSpidRequestQuery = 1 
 	OR @showSpidRequestWaitStat = 1 
 	OR @showUserConnections = 1 BEGIN
+
+
 
     SELECT 
 	s.session_id AS SPID,
@@ -1454,49 +1456,3 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
 
     DROP TABLE #TempQueryStoreData
 END
-
-DROP TABLE #TempDatabases
-DROP TABLE #TempTraceFlags
-
---TODO
---select *  FROM sys.database_files
---Show users
---Show users permissions
--- Show Transactions
--- Show locking
--- Show Page Life Expectancy(PLE)
--- Show Index Information
--- Show DTU information
--- Show tempdb 
--- show queries spilling into tempdb
--- show batches per minute
--- Show parameter sniffing queries
--- Most memory allowed by a single query -- Buffer Pool Memory?
--- Show Large Resource Semaphore
--- Show Small Resource Semaphore
--- Show all current logged in users
--- Show what wait states users are in
--- permission for those users.
--- Threading settings
-
-
---- maintanice windows
-    -- statistics/stats -  that get updated more often you might want to do every day more reorgs that rebuilds online/offline reorgs??
-    --              - tables that don't get update often don't need to
-    --               DBCC CHECKDB? - Brent Ozar Unlimited® - https://www.brentozar.com/archive/2016/02/how-often-should-i-run-dbcc-checkdb/ 
-    --              backup - 
-    --              traceflage for updating statistics
-
-    -- 
--- know your baseline cpu usage for the past few weeks during different times
--- how many log flushes
--- how many batche requests
-
-        -- select scheduler_id, cpu_id, status, is_online 
-        -- from sys.dm_os_schedulers 
-        -- where status = 'VISIBLE ONLINE'
-
-        -- select * from sysprocesses
-        -- -- where status = 'runnable' --comment this out
-        -- order by CPU
-        -- desc
