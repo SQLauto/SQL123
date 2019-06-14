@@ -9,14 +9,14 @@
 -- ALTER ROLE <role name> ADD MEMBER <role, user, login>;    
 
 -- What you want the user 
---The REFERENCES permission on a table is needed to create a FOREIGN KEY constraint that references that table. 
---The REFERENCES permission is needed on an object to create a FUNCTION or VIEW with the WITH SCHEMABINDING clause that references that object. 
--- CONNECT, SHOWPLAN, EXECUTE, SELECT, INSERT, UPDATE, DELETE, REFERENCES
--- CREATE TABLE, CREATE VIEW, CREATE PROCEDURE, CREATE TYPE, CREATE FUNCTION, CREATE DEFAULT
+-- Complete List: https://docs.microsoft.com/en-us/sql/t-sql/statements/grant-transact-sql?view=sql-server-2017
+-- CONNECT, SHOWPLAN, EXECUTE, SELECT, INSERT, UPDATE, DELETE
+-- CREATE TABLE, CREATE VIEW, CREATE PROCEDURE, CREATE TYPE, CREATE FUNCTION, CREATE DEFAULT, REFERENCES, CREATE SCHEMA
 -- ALTER ON SCHEMA::dbo, ALTER ON SCHEMA::<put schema>
 -- VIEW SERVER, STATE VIEW DATABASE STATE
 -- EXEC
 -- VIEW DEFINITION
+-- ALTER
 
 -- Can also use
 -- GRANT: Give permission
