@@ -2,7 +2,7 @@
 -- to the database you want to create 
 
 -- Create user
---CREATE USER <user, normally put 'usr' after login name> FOR LOGIN <login name> WITH DEFAULT_SCHEMA=[dbo]
+-- CREATE USER <user, normally put 'usr' after login name> FOR LOGIN <login name> WITH DEFAULT_SCHEMA=[dbo]
 
 -- Create a role
 -- CREATE ROLE <role name> AUTHORIZATION <role owner, can use CURRENT_USER, which is the default if AUTHORIZATION is left off>;
@@ -21,7 +21,7 @@
 -- Can also use
 -- GRANT: Give permission
 -- DENY: Deny permission
--- REMOVE: Removed granted permission
+-- REVOKE: Removed granted permission
 
 -- GRANT <PRIVILEGES>  TO <role, user, login>;
 -- GRANT <PRIVILEGES> ON OBJECT::SCHEMA::<The Shema>, <object name like sp and tables> TO <role, user, login>;
@@ -39,6 +39,9 @@
 -- db_datawriter
 -- db_denydatareader
 -- db_denydatawriter
+
+-- No loger use this because Microsoft is discontinuing it.
  --exec sp_addrolemember '<role to be a member of>', '<roll to add as a memeber>'
-
-
+ 
+-- Read more about it here: https://docs.microsoft.com/en-us/sql/t-sql/statements/alter-role-transact-sql?view=sql-server-2017
+-- ALTER ROLE <Role Name, including built in ones> add/drop member testusr
