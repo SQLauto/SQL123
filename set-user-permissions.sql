@@ -44,4 +44,4 @@
  --exec sp_addrolemember '<role to be a member of>', '<roll to add as a memeber>'
  
 -- Read more about it here: https://docs.microsoft.com/en-us/sql/t-sql/statements/alter-role-transact-sql?view=sql-server-2017
--- ALTER ROLE <Role Name, including built in ones> add/drop member testusr
+-- ALTER ROLE <Role Name, including built in ones> [add | drop] member <user/role/login>;
