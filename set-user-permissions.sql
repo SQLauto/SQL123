@@ -1,12 +1,21 @@
--- To creae a user you must login 
--- to the database you want to create 
+-- ======================Login Creation======================
 
--- Create user
--- CREATE USER <user, normally put 'usr' after login name> FOR LOGIN <login name> WITH DEFAULT_SCHEMA=[dbo]
+-- Create logins on master database.
+-- DEFAULT_DATABASE doesn't work on Azure.
+-- ALTER LOGIN <login> WITH DEFAULT_DATABASE = [new_default_database]
+-- CREATE LOGIN <login name> WITH PASSWORD = <password>
+-- CREATE LOGIN <login name> WITH PASSWORD = <password>, DEFAULT_DATABASE = <database-name>
+-- DROP LOGIN <login name>
 
+-- ======================User Creation======================
+-- Create user on database you want permission to. 
+-- CREATE USER <user, normally put 'usr' after login name> FOR LOGIN <login name> WITH DEFAULT_SCHEMA=dbo
+
+-- ======================Role Creation======================
 -- Create a role
--- CREATE ROLE <role name> AUTHORIZATION <role owner, can use CURRENT_USER, which is the default if AUTHORIZATION is left off>;
--- ALTER ROLE <role name> ADD MEMBER <role, user, login>;    
+-- CREATE ROLE <role name> AUTHORIZATION <role owner, can use CURRENT_USER, which is the default if AUTHORIZATION is left off.  I also like setting it to dbo>;
+-- ALTER ROLE <role name> ADD MEMBER <role, user, login>;   
+
 
 -- What you want the user 
 -- Complete List: https://docs.microsoft.com/en-us/sql/t-sql/statements/grant-transact-sql?view=sql-server-2017
@@ -17,6 +26,8 @@
 -- EXEC
 -- VIEW DEFINITION
 -- ALTER
+-- ALTER ANY USER
+-- SELECT ON <view, table etc> TO
 
 -- Can also use
 -- GRANT: Give permission
@@ -45,3 +56,4 @@
  
 -- Read more about it here: https://docs.microsoft.com/en-us/sql/t-sql/statements/alter-role-transact-sql?view=sql-server-2017
 -- ALTER ROLE <Role Name, including built in ones> [add | drop] member <user/role/login>;
+

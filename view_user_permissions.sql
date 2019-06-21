@@ -1,4 +1,4 @@
-DECLARE @roleOrUser NVARCHAR(100) = NULL;
+DECLARE @roleOrUser NVARCHAR(100) = null;
 
  -- Principal type:
 --A = Application role
@@ -12,8 +12,11 @@ DECLARE @roleOrUser NVARCHAR(100) = NULL;
 --X = External group from Azure Active Directory group or applications
 
 -- View permissions for role.
-SELECT up.name AS SqlUser, up.type AS Type, up.type_desc As TypeDescription, up.default_schema_name AS DefaultSchema, up.create_date As CreatedDate, up.modify_date AS ModifyDate,
-p.class AS Class, p.permission_name As PermissionName, p.State, p.state_desc AS StateDescription
+SELECT DISTINCT up.name AS SqlUser, up.type AS Type, up.type_desc As TypeDescription, up.default_schema_name AS DefaultSchema, up.create_date As CreatedDate, up.modify_date AS ModifyDate,
+p.class AS Class, p.permission_name As PermissionName, p.State, p.state_desc AS StateDescription,
+(SELECT TOP	1 Name
+ FROM sys.database_principals up2
+ WHERE up2.principal_id = up.owning_principal_id) AS OwerName
 FROM sys.database_principals up
 LEFT JOIN sys.database_role_members rm  ON up.principal_id = rm.member_principal_id
 LEFT JOIN sys.database_permissions p ON p.grantee_principal_id = up.principal_id
@@ -37,3 +40,9 @@ AND rp.type = 'R'
 ORDER BY rp.name;  
 
 
+--SELECT u.name AS UserName, l.name AS Login, l.Type_desc, default_database_name, l.* 
+--FROM sys.sysusers u
+--FULL OUTER JOIN master.sys.sql_logins l ON u.sid = l.sid 
+--WHERE islogin = 1 
+--AND u.sid is not null
+--AND  (u.name = @roleOrUser OR @roleOrUser IS NULL)
