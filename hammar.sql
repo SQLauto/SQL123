@@ -39,7 +39,7 @@ DECLARE @showDmSpills BIT = 0;
 DECLARE @showDmClrDuration BIT = 0;
 DECLARE @minTotalExecutionsOrderingAvg TINYINT = 5;
 
-DECLARE @showQueryStoreDuration BIT = 1;
+DECLARE @showQueryStoreDuration BIT = 0;
 DECLARE @showQueryStoreTotalDuration BIT = 0;
 DECLARE @showQueryStoreTotalExecutions BIT = 0;
 DECLARE @showQueryStoreIo BIT = 0;
@@ -190,28 +190,28 @@ BEGIN
     CONVERT(VARCHAR(500), ((qs.total_worker_time/qs.execution_count/1000%86400000)/3600000)) + 'h '+
     CONVERT(VARCHAR(500), (((qs.total_worker_time/qs.execution_count/1000%86400000)%3600000)/60000)) + 'm '+
     CONVERT(VARCHAR(500), ((((qs.total_worker_time/qs.execution_count/1000%86400000)%3600000)%60000)/1000)) + 's ' +
-    CONVERT(VARCHAR(500), (((qs.total_worker_time/qs.execution_count/1000%86400000)%3600000)%1000)) + 'ms'            AS AvgCpuDurationAsString,
+    CONVERT(VARCHAR(500), (((qs.total_worker_time/qs.execution_count/1000%86400000)%3600000)%1000)) + 'ms'           AS AvgCpuDurationAsString,
 
     qs.last_worker_time/1000                                                                                         AS LastCpuDurationAsInt,
     CONVERT(VARCHAR(500), (qs.last_worker_time/1000/86400000)) + 'd ' +
     CONVERT(VARCHAR(500), ((qs.last_worker_time/1000%86400000)/3600000)) + 'h '+
     CONVERT(VARCHAR(500), (((qs.last_worker_time/1000%86400000)%3600000)/60000)) + 'm '+
     CONVERT(VARCHAR(500), ((((qs.last_worker_time/1000%86400000)%3600000)%60000)/1000)) + 's ' +
-    CONVERT(VARCHAR(500), (((qs.last_worker_time/1000%86400000)%3600000)%1000)) + 'ms'                                AS LastCpuDurationAsString,
+    CONVERT(VARCHAR(500), (((qs.last_worker_time/1000%86400000)%3600000)%1000)) + 'ms'                               AS LastCpuDurationAsString,
 
     qs.min_worker_time/1000                                                                                          AS MinCpuDurationAsInt, 
     CONVERT(VARCHAR(500), (qs.min_worker_time/1000/86400000)) + 'd ' +
     CONVERT(VARCHAR(500), ((qs.min_worker_time/1000%86400000)/3600000)) + 'h '+
     CONVERT(VARCHAR(500), (((qs.min_worker_time/1000%86400000)%3600000)/60000)) + 'm '+
     CONVERT(VARCHAR(500), ((((qs.min_worker_time/1000%86400000)%3600000)%60000)/1000)) + 's ' +
-    CONVERT(VARCHAR(500), (((qs.min_worker_time/1000%86400000)%3600000)%1000)) + 'ms'                                 AS MinCpuDurationAsString,
+    CONVERT(VARCHAR(500), (((qs.min_worker_time/1000%86400000)%3600000)%1000)) + 'ms'                                AS MinCpuDurationAsString,
 
     qs.max_worker_time/1000                                                                                          AS MaxCpuDurationAsInt, 
     CONVERT(VARCHAR(500), (qs.max_worker_time/1000/86400000)) + 'd ' +
     CONVERT(VARCHAR(500), ((qs.max_worker_time/1000%86400000)/3600000)) + 'h '+
     CONVERT(VARCHAR(500), (((qs.max_worker_time/1000%86400000)%3600000)/60000)) + 'm '+
     CONVERT(VARCHAR(500), ((((qs.max_worker_time/1000%86400000)%3600000)%60000)/1000)) + 's ' +
-    CONVERT(VARCHAR(500), (((qs.max_worker_time/1000%86400000)%3600000)%1000)) + 'ms'                                 AS MaxCpuDurationAsString,
+    CONVERT(VARCHAR(500), (((qs.max_worker_time/1000%86400000)%3600000)%1000)) + 'ms'                                AS MaxCpuDurationAsString,
 
     qs.total_logical_writes                                                                                          AS TotalLogicalWritesAsInt,
     FORMAT(qs.total_logical_writes, N'###,###,###0')                                                                 AS TotalLogicalWritesAsString,
@@ -251,35 +251,35 @@ BEGIN
     CONVERT(VARCHAR(500), ((qs.total_clr_time/1000%86400000)/3600000)) + 'h '+
     CONVERT(VARCHAR(500), (((qs.total_clr_time/1000%86400000)%3600000)/60000)) + 'm '+
     CONVERT(VARCHAR(500), ((((qs.total_clr_time/1000%86400000)%3600000)%60000)/1000)) + 's ' +
-    CONVERT(VARCHAR(500), (((qs.total_clr_time/1000%86400000)%3600000)%1000)) + 'ms'                                  AS TotalClrTimeAsString,
+    CONVERT(VARCHAR(500), (((qs.total_clr_time/1000%86400000)%3600000)%1000)) + 'ms'                                 AS TotalClrTimeAsString,
 
     qs.total_clr_time/1000/qs.execution_count                                                                        AS AvgClrTimeAsInt,
     CONVERT(VARCHAR(500), (qs.total_clr_time/qs.execution_count/1000/86400000)) + 'd ' +
     CONVERT(VARCHAR(500), ((qs.total_clr_time/qs.execution_count/1000%86400000)/3600000)) + 'h '+
     CONVERT(VARCHAR(500), (((qs.total_clr_time/qs.execution_count/1000%86400000)%3600000)/60000)) + 'm '+
     CONVERT(VARCHAR(500), ((((qs.total_clr_time/qs.execution_count/1000%86400000)%3600000)%60000)/1000)) + 's ' +
-    CONVERT(VARCHAR(500), (((qs.total_clr_time/qs.execution_count/1000%86400000)%3600000)%1000)) + 'ms'               AS AvgClrTimeAsString,
+    CONVERT(VARCHAR(500), (((qs.total_clr_time/qs.execution_count/1000%86400000)%3600000)%1000)) + 'ms'              AS AvgClrTimeAsString,
 
     qs.last_clr_time/1000                                                                                            AS LastClrTimeAsInt,
     CONVERT(VARCHAR(500), (qs.last_clr_time/1000/86400000)) + 'd ' +
     CONVERT(VARCHAR(500), ((qs.last_clr_time/1000%86400000)/3600000)) + 'h '+
     CONVERT(VARCHAR(500), (((qs.last_clr_time/1000%86400000)%3600000)/60000)) + 'm '+
     CONVERT(VARCHAR(500), ((((qs.last_clr_time/1000%86400000)%3600000)%60000)/1000)) + 's ' +
-    CONVERT(VARCHAR(500), (((qs.last_clr_time/1000%86400000)%3600000)%1000)) + 'ms'                                   AS LastClrTimeAsString,
+    CONVERT(VARCHAR(500), (((qs.last_clr_time/1000%86400000)%3600000)%1000)) + 'ms'                                  AS LastClrTimeAsString,
 
     qs.min_clr_time/1000                                                                                             AS MinClrTimeAsInt, 
     CONVERT(VARCHAR(500), (qs.min_clr_time/1000/86400000)) + 'd ' +
     CONVERT(VARCHAR(500), ((qs.min_clr_time/1000%86400000)/3600000)) + 'h '+
     CONVERT(VARCHAR(500), (((qs.min_clr_time/1000%86400000)%3600000)/60000)) + 'm '+
     CONVERT(VARCHAR(500), ((((qs.min_clr_time/1000%86400000)%3600000)%60000)/1000)) + 's ' +
-    CONVERT(VARCHAR(500), (((qs.min_clr_time/1000%86400000)%3600000)%1000)) + 'ms'                                    AS MinClrTimeAsString,
+    CONVERT(VARCHAR(500), (((qs.min_clr_time/1000%86400000)%3600000)%1000)) + 'ms'                                   AS MinClrTimeAsString,
 
     qs.max_clr_time/1000                                                                                             AS MaxClrTimeAsInt, 
     CONVERT(VARCHAR(500), (qs.max_clr_time/1000/86400000)) + 'd ' +
     CONVERT(VARCHAR(500), ((qs.max_clr_time/1000%86400000)/3600000)) + 'h '+
     CONVERT(VARCHAR(500), (((qs.max_clr_time/1000%86400000)%3600000)/60000)) + 'm '+
     CONVERT(VARCHAR(500), ((((qs.max_clr_time/1000%86400000)%3600000)%60000)/1000)) + 's ' +
-    CONVERT(VARCHAR(500), (((qs.max_clr_time/1000%86400000)%3600000)%1000)) + 'ms'                                    AS MaxClrTimeAsString,
+    CONVERT(VARCHAR(500), (((qs.max_clr_time/1000%86400000)%3600000)%1000)) + 'ms'                                   AS MaxClrTimeAsString,
 
     qs.statement_start_offset                                                                                        AS StatementStartOffset,
     qs.statement_start_offset                                                                                        AS StatementEndOffset,
@@ -1059,7 +1059,7 @@ IF @showSpidSesisonLoginInformation = 1
         SessionClientVersionAsInt,
         SessionIsUserProcessAsBit,
         SessionStatusAsString,
-        CAST(SessionTotalElapedTimeAsInt AS NVARCHAR(500)) + ' ms' AS SessionTotalElapedTime,
+        CAST(SessionTotalElapedTimeAsInt AS NVARCHAR(500)) + ' ms'  AS SessionTotalElapedTimeInMillisecondsAsString,
         SessionRequestedStartTimeAsDateTime,
         SessionRequestedEndTimeAsDateTime,
         SessionLastSuccessfulLogonAsDateTime,
@@ -1295,7 +1295,11 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
-        TotalExectionsAsString,
+		AvgRowCount,
+		LastRowCount,
+		MinRowCount,
+		MaxRowCount,
+        TotalExectionsAsString AS TotalExections,
         SQLTextLength,
         AvgDurationInMillisecondsAsString AS AvgDurationInMilliseconds,
         LastDurationInMillisecondsAsString AS LastDurationInMilliseconds,
@@ -1319,8 +1323,13 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
+		AvgRowCount,
+		LastRowCount,
+		MinRowCount,
+		MaxRowCount,
+		LastDurationInMillisecondsAsString AS LastDurationInMilliseconds,
 		AvgDurationInMillisecondsAsString AS AvgDurationInMilliseconds,
-        TotalExectionsAsString,
+        TotalExectionsAsString AS TotalExections,
         SQLTextLength,
         TotalDurationString AS TotalDurations,
         TotalDurationInFormatAsString AS TotalDurationFormatted,
@@ -1342,9 +1351,13 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
+		AvgRowCount,
+		LastRowCount,
+		MinRowCount,
+		MaxRowCount,
+		LastDurationInMillisecondsAsString AS LastDurationInMilliseconds,
 		AvgDurationInMillisecondsAsString AS AvgDurationInMilliseconds,
-        TotalExectionsAsString,
-        TotalExectionsAsString,
+        TotalExectionsAsString AS TotalExections,
         SQLTextLength,
         DatabaseObject,
         object_id,
@@ -1365,7 +1378,13 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
-        TotalExectionsAsString,
+        AvgRowCount,
+		LastRowCount,
+		MinRowCount,
+		MaxRowCount,
+		LastDurationInMillisecondsAsString AS LastDurationInMilliseconds,
+		AvgDurationInMillisecondsAsString AS AvgDurationInMilliseconds,
+        TotalExectionsAsString AS TotalExections,
         SQLTextLength,
         AvgCpuTimeInMillisecondsAsString AS AvgCpuTimeInMilliseconds,
         LastCpuTimeInMillisecondsAsString AS LastCpuTimeInMilliseconds,
@@ -1389,12 +1408,18 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
-        TotalExectionsAsString,
+        AvgRowCount,
+		LastRowCount,
+		MinRowCount,
+		MaxRowCount,
+		LastDurationInMillisecondsAsString AS LastDurationInMilliseconds,
+		AvgDurationInMillisecondsAsString AS AvgDurationInMilliseconds,
+        TotalExectionsAsString AS TotalExections,
         SQLTextLength,
-        AvgMemoryInMegabytesAsInt,
-        LastMemoryInMegabytesAsInt,
-        MinMemoryInMegabytesAsInt,
-        MaxMemoryInMegabytesAsInt,
+        AvgMemoryInMegabytesAsInt AS AvgMemoryInMegabytes,
+        LastMemoryInMegabytesAsInt AS LastMemoryInMegabytes,
+        MinMemoryInMegabytesAsInt AS MinMemoryInMegabytes,
+        MaxMemoryInMegabytesAsInt AS MaxMemoryInMegabytes,
         DatabaseObject,
         object_id,
         FirstExecutionTime,
@@ -1413,12 +1438,18 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
-        TotalExectionsAsString,
+        AvgRowCount,
+		LastRowCount,
+		MinRowCount,
+		MaxRowCount,
+		LastDurationInMillisecondsAsString AS LastDurationInMilliseconds,
+		AvgDurationInMillisecondsAsString AS AvgDurationInMilliseconds,
+        TotalExectionsAsString AS TotalExections,
         SQLTextLength,
-        AvgDegreeOfParallelismAsInt,
-        LastDegreeOfParallelismAsInt,
-        MinDegreeOfParallelismAsInt,
-        MaxDegreeOfParallelismAsInt,
+        AvgDegreeOfParallelismAsInt AS AvgDegreeOfParallelism,
+        LastDegreeOfParallelismAsInt AS LastDegreeOfParallelism,
+        MinDegreeOfParallelismAsInt AS MinDegreeOfParallelism,
+        MaxDegreeOfParallelismAsInt AS MaxDegreeOfParallelism,
         DatabaseObject,
         object_id,
         FirstExecutionTime,
@@ -1437,24 +1468,30 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
-        TotalExectionsAsString,
+        AvgRowCount,
+		LastRowCount,
+		MinRowCount,
+		MaxRowCount,
+		LastDurationInMillisecondsAsString AS LastDurationInMilliseconds,
+		AvgDurationInMillisecondsAsString AS AvgDurationInMilliseconds,
+        TotalExectionsAsString AS TotalExections,
         SQLTextLength,
-        AvgLogicalIoReadsAsInt,
-        LastLogicalIoReadsAsInt,
-        MinLogicalIoReadsAsInt,
-        MaxLogicalIoReadsAsInt,
-        AvgLogicalIoWritesAsInt,
-        LastLogicalIoWritesAsInt,
-        MinLogicalIoWritesAsInt,
-        MaxLogicalIoWritesAsInt,
-        AvgPhysicalIoReadsAsInt,
-        LastPhysicalIoReadsAsInt,
-        MinPhysicalIoReadsAsInt,
-        MaxPhysicalIoReadsAsInt,
-        AvgNumPhysicalIoReadsAsInt,
-        LastNumPhysicalIoReadsAsInt,
-        MinNumPhysicalIoReadsAsInt,
-        MaxNumPhysicalIoReadsAsInt,
+        AvgLogicalIoReadsAsInt AS AvgLogicalIoReads,
+        LastLogicalIoReadsAsInt AS  LastLogicalIoReads,
+        MinLogicalIoReadsAsInt AS MinLogicalIoReads,
+        MaxLogicalIoReadsAsInt AS MaxLogicalIoReads,
+        AvgLogicalIoWritesAsInt AS AvgLogicalIoWrites,
+        LastLogicalIoWritesAsInt AS LastLogicalIoWrites,
+        MinLogicalIoWritesAsInt AS MinLogicalIoWrites,
+        MaxLogicalIoWritesAsInt AS MaxLogicalIoWrites,
+        AvgPhysicalIoReadsAsInt AS AvgPhysicalIoReads,
+        LastPhysicalIoReadsAsInt AS LastPhysicalIoReads,
+        MinPhysicalIoReadsAsInt AS MinPhysicalIoReads,
+        MaxPhysicalIoReadsAsInt AS MaxPhysicalIoReads,
+        AvgNumPhysicalIoReadsAsInt AS AvgNumPhysicalIoReads,
+        LastNumPhysicalIoReadsAsInt AS LastNumPhysicalIoReads,
+        MinNumPhysicalIoReadsAsInt AS MinNumPhysicalIoReads,
+        MaxNumPhysicalIoReadsAsInt AS MaxNumPhysicalIoReads,
         DatabaseObject,
         object_id,
         FirstExecutionTime,
