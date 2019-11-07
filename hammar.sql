@@ -6,17 +6,17 @@ DROP TABLE IF EXISTS #TempQueryStoreData;
 DROP TABLE IF EXISTS #TempSessionsRequestAndConnections
 
 DECLARE @dt DATETIME2 = DATEADD(minute, -120, GETDATE());
-DECLARE @top INT = 5;
+DECLARE @top INT = 15;
 DECLARE @plainId INT = NULL;
 DECLARE @queryId INT = NULL;
 
 DECLARE @showUserConnections BIT = 1;
-DECLARE @showSpidSesisonLoginInformation BIT = 0;
+DECLARE @showSpidSesisonLoginInformation BIT = 1;
 
 DECLARE @showSqlServerMemoryProfile BIT = 0;
 DECLARE @showQueryStoreMemoryGrants BIT = 0;
 
-DECLARE @showAllAzureLimits BIT = 0;
+DECLARE @showAllAzureLimits BIT = 1;
 DECLARE @showAzureMemoryUsage BIT = 0;
 DECLARE @showAzureCpu BIT = 0;
 DECLARE @showAzureAvgDataIoPercent BIT = 0;
@@ -39,8 +39,14 @@ DECLARE @showDmSpills BIT = 0;
 DECLARE @showDmClrDuration BIT = 0;
 DECLARE @minTotalExecutionsOrderingAvg TINYINT = 5;
 
+-- Only works with  @showQueryStoreTotalDuration
+DECLARE @orderByAvgDesc AS BIT = 0;
+DECLARE @orderByLastDesc AS BIT = 1;
+DECLARE @orderByTotalDesc AS BIT = 0;
+DECLARE @addQueryTextCondition AS VARCHAR(200) = NULL;
+DECLARE @showQueryStoreTotalDuration BIT = 1;
+
 DECLARE @showQueryStoreDuration BIT = 0;
-DECLARE @showQueryStoreTotalDuration BIT = 0;
 DECLARE @showQueryStoreTotalExecutions BIT = 0;
 DECLARE @showQueryStoreIo BIT = 0;
 DECLARE @showQueryStoreCpu BIT = 0;
@@ -1185,31 +1191,31 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
     ca_aggregate_runtime_stats.LastExecutionTime,
     ca_runtime_executions.TotalExections AS TotalExectionsAsInt,
     FORMAT(ca_runtime_executions.TotalExections, N'###,###,###0') AS TotalExectionsAsString,
-    ca_runtime_executions.TotalDuration AS TotalDurationAsInt,
-    FORMAT(ca_runtime_executions.TotalDuration, N'###,###,###0') + N' ms' AS TotalDurationString,
+    ca_runtime_executions.TotalDurationAsInt AS TotalDurationAsInt,
+    FORMAT(ca_runtime_executions.TotalDurationAsInt, N'###,###,###0') + N' ms' AS TotalDurationString,
 
     
-    CONVERT(VARCHAR(500), (ca_runtime_executions.TotalDuration/86400000)) + 'd ' +
-    CONVERT(VARCHAR(500), ((ca_runtime_executions.TotalDuration%86400000)/3600000)) + 'h '+
-    CONVERT(VARCHAR(500), (((ca_runtime_executions.TotalDuration%86400000)%3600000)/60000)) + 'm '+
-    CONVERT(VARCHAR(500), ((((ca_runtime_executions.TotalDuration%86400000)%3600000)%60000)/1000)) + 's ' +
-    CONVERT(VARCHAR(500), (((ca_runtime_executions.TotalDuration%86400000)%3600000)%1000)) + 'ms' AS TotalDurationInFormatAsString,
+    CONVERT(VARCHAR(500), (ca_runtime_executions.TotalDurationAsInt/86400000)) + 'd ' +
+    CONVERT(VARCHAR(500), ((ca_runtime_executions.TotalDurationAsInt%86400000)/3600000)) + 'h '+
+    CONVERT(VARCHAR(500), (((ca_runtime_executions.TotalDurationAsInt%86400000)%3600000)/60000)) + 'm '+
+    CONVERT(VARCHAR(500), ((((ca_runtime_executions.TotalDurationAsInt%86400000)%3600000)%60000)/1000)) + 's ' +
+    CONVERT(VARCHAR(500), (((ca_runtime_executions.TotalDurationAsInt%86400000)%3600000)%1000)) + 'ms' AS TotalDurationInFormatAsString,
 
-    ca_aggregate_runtime_stats.AvgDuration AS AvgDurationAsInt,
-    CONVERT(VARCHAR(500), CAST(ca_aggregate_runtime_stats.AvgDuration AS FLOAT) / 1000) + N' ms' AS AvgDurationInMillisecondsAsString,
-    ca_aggregate_runtime_stats.LastDuration AS LastDuration,
-    CONVERT(VARCHAR(500), CAST(ca_aggregate_runtime_stats.LastDuration AS FLOAT) / 1000) + N' ms' AS LastDurationInMillisecondsAsString,
-    ca_aggregate_runtime_stats.MinDuration AS MinDuration,
-    CONVERT(VARCHAR(500), CAST(ca_aggregate_runtime_stats.MinDuration AS FLOAT) / 1000) + N' ms' AS MinDurationInMillisecondsAsString,
-    ca_aggregate_runtime_stats.MaxDuration AS MaxDuration,
-    CONVERT(VARCHAR(500), CAST(ca_aggregate_runtime_stats.MaxDuration AS FLOAT) / 1000) + N' ms' AS MaxDurationInMillisecondsAsString,
+    ca_aggregate_runtime_stats.AvgDurationAsInt AS AvgDurationAsInt,
+    CONVERT(VARCHAR(500), CAST(ca_aggregate_runtime_stats.AvgDurationAsInt AS FLOAT) / 1000) + N' ms' AS AvgDurationInMillisecondsAsString,
+    ca_aggregate_runtime_stats.LastDurationAsInt AS LastDurationAsInt,
+    CONVERT(VARCHAR(500), CAST(ca_aggregate_runtime_stats.LastDurationAsInt AS FLOAT) / 1000) + N' ms' AS LastDurationInMillisecondsAsString,
+    ca_aggregate_runtime_stats.MinDurationAsInt AS MinDurationAsInt,
+    CONVERT(VARCHAR(500), CAST(ca_aggregate_runtime_stats.MinDurationAsInt AS FLOAT) / 1000) + N' ms' AS MinDurationInMillisecondsAsString,
+    ca_aggregate_runtime_stats.MaxDurationAsInt AS MaxDurationAsInt,
+    CONVERT(VARCHAR(500), CAST(ca_aggregate_runtime_stats.MaxDurationAsInt AS FLOAT) / 1000) + N' ms' AS MaxDurationInMillisecondsAsString,
     FORMAT(LEN(qsqt.query_sql_text), N'###,###,###0') AS SQLTextLength,
     qsqt.query_sql_text,
     ca_queries_for_plan.total_queries_for_plan AS QueriesForPlan,
-    ca_aggregate_runtime_stats.AvgRowCount,
-    ca_aggregate_runtime_stats.LastRowCount,
-    ca_aggregate_runtime_stats.MaxRowCount,
-    ca_aggregate_runtime_stats.MinRowCount,
+    ca_aggregate_runtime_stats.AvgRowCountAsInt,
+    ca_aggregate_runtime_stats.LastRowCountAsInt,
+    ca_aggregate_runtime_stats.MaxRowCountAsInt,
+    ca_aggregate_runtime_stats.MinRowCountAsInt,
     ca_aggregate_runtime_stats.AvgCpuTime AS AvgCpuTime,
     CONVERT(VARCHAR(500), CAST(ca_aggregate_runtime_stats.AvgCpuTime AS FLOAT) / 1000) + N' ms' AS AvgCpuTimeInMillisecondsAsString,
     ca_aggregate_runtime_stats.LastCpuTime AS LastCpuTime,
@@ -1253,8 +1259,8 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
 	(
 		SELECT
         MAX(qrs.last_execution_time) AS LastExecutionTime, MIN(qrs.first_execution_time) AS FirstExecutionTime,
-        AVG(qrs.avg_rowcount) AS AvgRowCount, MAX(qrs.last_rowcount) AS LastRowCount, MAX(qrs.max_rowcount) AS MaxRowCount, MIN(qrs.min_rowcount) AS MinRowCount,
-        AVG(qrs.avg_duration) AS AvgDuration, MAX(qrs.last_duration) AS LastDuration, MAX(qrs.max_duration) AS MaxDuration, MIN(qrs.min_duration) AS MinDuration,
+        AVG(qrs.avg_rowcount) AS AvgRowCountAsInt, MAX(qrs.last_rowcount) AS LastRowCountAsInt, MAX(qrs.max_rowcount) AS MaxRowCountAsInt, MIN(qrs.min_rowcount) AS MinRowCountAsInt,
+        AVG(qrs.avg_duration) AS AvgDurationAsInt, MAX(qrs.last_duration) AS LastDurationAsInt, MAX(qrs.max_duration) AS MaxDurationAsInt, MIN(qrs.min_duration) AS MinDurationAsInt,
         AVG(qrs.avg_cpu_time) AS AvgCpuTime, MAX(qrs.last_cpu_time) AS LastCpuTime, MAX(qrs.max_cpu_time) AS MaxCpuTime, MIN(qrs.min_cpu_time) AS MinCpuTime,
         AVG(qrs.avg_query_max_used_memory) AS AvgMaxUsedMemory, MAX(qrs.last_query_max_used_memory) AS LastMaxUsedMemory, MAX(qrs.max_query_max_used_memory) AS MaxMaxUsedMemory, MIN(qrs.min_query_max_used_memory) AS MinMaxUsedMemory,
         AVG(qrs.avg_dop) AS AvgDop, MAX(qrs.last_dop) AS LastDop, MAX(qrs.max_dop) AS MaxDop, MIN(qrs.min_dop) AS MinDop,
@@ -1268,7 +1274,7 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
 	) ca_aggregate_runtime_stats
 	CROSS APPLY
 	(
-		SELECT CONVERT(INT, SUM(rs.avg_duration)) AS TotalDuration,
+		SELECT CONVERT(INT, SUM(rs.avg_duration)) AS TotalDurationAsInt,
         SUM(rs.count_executions) AS TotalExections
         FROM #tempQueryStoreRuntimeStats rs (NOLOCK)
         WHERE rs.plan_id = qsp.plan_id
@@ -1289,44 +1295,16 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
 
     DROP TABLE #tempQueryStoreRuntimeStats;
 
-    IF @showQueryStoreDuration = 1 BEGIN
-
-        SELECT TOP(@top)
-        SPID,
-        plan_id,
-        query_id,
-		AvgRowCount,
-		LastRowCount,
-		MinRowCount,
-		MaxRowCount,
-        TotalExectionsAsString AS TotalExections,
-        SQLTextLength,
-        AvgDurationInMillisecondsAsString AS AvgDurationInMilliseconds,
-        LastDurationInMillisecondsAsString AS LastDurationInMilliseconds,
-        MinDurationInMillisecondsAsString AS MinDurationInMilliseconds,
-        MaxDurationInMillisecondsAsString AS MaxDurationInMilliseconds,
-        DatabaseObject,
-        object_id,
-        FirstExecutionTime,
-        LastExecutionTime,
-        query_sql_text,
-        QueriesForPlan,
-        QueryPlan
-        FROM #TempQueryStoreData
-        ORDER BY AvgDurationAsInt DESC
-
-    END
-
     IF @showQueryStoreTotalDuration = 1 BEGIN
 
         SELECT TOP(@top)
         SPID,
         plan_id,
         query_id,
-		AvgRowCount,
-		LastRowCount,
-		MinRowCount,
-		MaxRowCount,
+		AvgRowCountAsInt,
+		LastRowCountAsInt,
+		MinRowCountAsInt,
+		MaxRowCountAsInt,
 		LastDurationInMillisecondsAsString AS LastDurationInMilliseconds,
 		AvgDurationInMillisecondsAsString AS AvgDurationInMilliseconds,
         TotalExectionsAsString AS TotalExections,
@@ -1341,7 +1319,11 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         QueriesForPlan,
         QueryPlan
         FROM #TempQueryStoreData
-        ORDER BY TotalDurationAsInt DESC
+		WHERE (@addQueryTextCondition IS NULL OR query_sql_text LIKE '%' + @addQueryTextCondition + '%' )
+		ORDER BY
+		CASE WHEN @orderByAvgDesc = 1 THEN AvgDurationAsInt END DESC,
+		CASE WHEN @orderByLastDesc = 1 THEN LastDurationAsInt END DESC,
+		CASE WHEN @orderByTotalDesc = 1 THEN TotalDurationAsInt END DESC;
 
     END
 
@@ -1351,10 +1333,10 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
-		AvgRowCount,
-		LastRowCount,
-		MinRowCount,
-		MaxRowCount,
+		AvgRowCountAsInt,
+		LastRowCountAsInt,
+		MinRowCountAsInt,
+		MaxRowCountAsInt,
 		LastDurationInMillisecondsAsString AS LastDurationInMilliseconds,
 		AvgDurationInMillisecondsAsString AS AvgDurationInMilliseconds,
         TotalExectionsAsString AS TotalExections,
@@ -1368,7 +1350,6 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         QueryPlan
         FROM #TempQueryStoreData
         ORDER BY TotalExectionsAsInt DESC
-
     END
 
 
@@ -1378,10 +1359,10 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
-        AvgRowCount,
-		LastRowCount,
-		MinRowCount,
-		MaxRowCount,
+        AvgRowCountAsInt,
+		LastRowCountAsInt,
+		MinRowCountAsInt,
+		MaxRowCountAsInt,
 		LastDurationInMillisecondsAsString AS LastDurationInMilliseconds,
 		AvgDurationInMillisecondsAsString AS AvgDurationInMilliseconds,
         TotalExectionsAsString AS TotalExections,
@@ -1408,10 +1389,10 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
-        AvgRowCount,
-		LastRowCount,
-		MinRowCount,
-		MaxRowCount,
+        AvgRowCountAsInt,
+		LastRowCountAsInt,
+		MinRowCountAsInt,
+		MaxRowCountAsInt,
 		LastDurationInMillisecondsAsString AS LastDurationInMilliseconds,
 		AvgDurationInMillisecondsAsString AS AvgDurationInMilliseconds,
         TotalExectionsAsString AS TotalExections,
@@ -1438,10 +1419,10 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
-        AvgRowCount,
-		LastRowCount,
-		MinRowCount,
-		MaxRowCount,
+        AvgRowCountAsInt,
+		LastRowCountAsInt,
+		MinRowCountAsInt,
+		MaxRowCountAsInt,
 		LastDurationInMillisecondsAsString AS LastDurationInMilliseconds,
 		AvgDurationInMillisecondsAsString AS AvgDurationInMilliseconds,
         TotalExectionsAsString AS TotalExections,
@@ -1468,10 +1449,10 @@ IF @showQueryStoreDuration = 1 OR @showQueryStoreCpu = 1 OR @showQueryStoreIo = 
         SPID,
         plan_id,
         query_id,
-        AvgRowCount,
-		LastRowCount,
-		MinRowCount,
-		MaxRowCount,
+        AvgRowCountAsInt,
+		LastRowCountAsInt,
+		MinRowCountAsInt,
+		MaxRowCountAsInt,
 		LastDurationInMillisecondsAsString AS LastDurationInMilliseconds,
 		AvgDurationInMillisecondsAsString AS AvgDurationInMilliseconds,
         TotalExectionsAsString AS TotalExections,
