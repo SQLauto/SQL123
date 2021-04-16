@@ -70,11 +70,11 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 END
 IF ISNULL(@viewHowManyOfObjectTypes, 0) = 1 BEGIN
 
-SELECT objtype, 
-COUNT(*) as NumberOfPlans,
-SUM(CAST(size_in_bytes as bigint))/1024/1024 as SizeInMBs,
-AVG(usecounts) as AvgNumberOfTimesCacheObjectLookedUp
-FROM sys.dm_exec_cached_plans
-GROUP BY objtype
+    SELECT objtype, 
+    COUNT(*) as NumberOfPlans,
+    SUM(CAST(size_in_bytes as bigint))/1024/1024 as SizeInMBs,
+    AVG(usecounts) as AvgNumberOfTimesCacheObjectLookedUp
+    FROM sys.dm_exec_cached_plans
+    GROUP BY objtype
 
 END
