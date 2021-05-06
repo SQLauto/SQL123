@@ -11,7 +11,7 @@ IF ISNULL(@databaseName, '') != '' BEGIN
 
     DECLARE DatabaseCursor CURSOR READ_ONLY FOR  
     SELECT Name 
-    FROM master.sys.databases   
+    FROM sys.databases   
     WHERE NAME = @databaseName
     AND State = 0 -- database is online
     AND is_in_standby = 0 -- database is not read only for log shipping

@@ -19,7 +19,7 @@ DECLARE @showColumnStatistics BIT = 0;
 -- ALTER INDEX <INDEX NAME> ON <TABLE NAME> REBUILD; 
 
 IF ISNULL(@showIndexData, 0) = 1 BEGIN
-    SELECT
+    SELECT 
     OBJECT_SCHEMA_NAME(o.object_id) AS SchemaName,
     o.name AS TableName,
     i.name AS IndexName,
@@ -29,12 +29,13 @@ IF ISNULL(@showIndexData, 0) = 1 BEGIN
     i.is_disabled AS IsDisabled,
     i.auto_created AS IndexCreatedByAutomaticTuning,
     STATS_DATE(i.object_id,i.index_id) IndexStatisticsLastUpdatedOrCreated,
+    DATEDIFF(d,STATS_DATE(i.object_id,i.index_id), GETDATE()) DaysOld,
+    sp.modification_counter AS TotalNumberOfModificationsForLeadingStatisticsColumn,
     sp.rows AS RowsWhenStatisticsLastUpdated,
     sp.rows_sampled AS TotalNumberOfRowsSampledForStatisticsCalculations,
     (sp.rows_sampled * 100)/rows AS SamplePercent,
     sp.persisted_sample_percent PersistedSamplePercent,
     sp.steps AS NumberOfStepsInTheHistogram,
-    sp.modification_counter AS ModCounter,
     i.allow_row_locks AS AllowRowLocks,
     o.create_date AS TableCreateDateTime, 
     o.modify_date AS TableModifyDateTime,
@@ -49,7 +50,6 @@ IF ISNULL(@showIndexData, 0) = 1 BEGIN
     ios.leaf_insert_count AS NumOfInserts,
     ios.leaf_delete_count AS NumOfDeletes,
     ios.leaf_update_count AS NumOfUpdates,
-    ips.avg_fragmentation_in_percent AS Fragmentation,
     oa_index_size.IndexSizeKB,
     oa_index_size.TotalUsedMB,
     oa_index_size.TotalDataMB,
@@ -86,7 +86,6 @@ IF ISNULL(@showIndexData, 0) = 1 BEGIN
     ios.page_compression_success_count
     FROM sys.indexes i 
     LEFT JOIN sys.dm_db_index_usage_stats ius ON i.index_id = ius.index_id AND ius.object_id = i.object_id
-    LEFT JOIN sys.dm_db_index_physical_stats(NULL,NULL,NULL,NULL,NULL) ips ON ius.object_id = ips.object_id AND ips.index_id = i.index_id
     INNER JOIN sys.objects o ON o.object_id = i.object_id
     LEFT JOIN sys.dm_db_index_operational_stats (NULL,NULL,NULL,NULL ) ios ON i.object_id = ios.object_id AND i.index_id = ios.index_id
     OUTER APPLY sys.dm_db_stats_properties (object_id(o.name), 1) sp
@@ -166,7 +165,6 @@ IF ISNULL(@showIndexData, 0) = 1 BEGIN
     i.object_id,
     i.index_id,
     i.filter_definition,
-    ips.avg_fragmentation_in_percent,
     oa_index_size.used_pages,
     oa_index_size.reserved_pages,
     oa_index_size.ReservedMB,

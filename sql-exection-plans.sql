@@ -8,12 +8,11 @@ DECLARE @databaseName NVARCHAR(MAX) = NULL;
 DECLARE @queryPlanLike NVARCHAR(MAX) = NULL;
 DECLARE @lastExecutedDateTime DATETIME2 = NULL;
 DECLARE @objectType NVARCHAR(MAX) = NULL;
-DECLARE @viewExectionPlans BIT = 1;
+DECLARE @viewExectionPlans BIT = 1; 
 DECLARE @viewHowManyOfObjectTypes BIT = 1;
 DECLARE @howManyRows INT = 10;
 
 IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
-
     SELECT TOP(ISNULL(@howManyRows, 10))
     qsp.plan_id AS QueryStorePlanId,
     len(sqlText.text) QueryLength,
@@ -35,10 +34,10 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
     qp.query_plan,
     cp.plan_handle
     FROM sys.dm_exec_cached_plans cp
-    JOIN sys.dm_exec_query_stats qs ON cp.plan_handle = qs.plan_handle
-    JOIN sys.query_store_plan qsp ON qs.query_plan_hash = qsp.query_plan_hash AND qs.plan_handle = QS.plan_handle
-    CROSS APPLY sys.dm_exec_sql_text(cp.plan_handle)AS sqlText
-    CROSS APPLY sys.dm_exec_query_plan(cp.plan_handle)AS qp
+    LEFT JOIN sys.dm_exec_query_stats qs ON cp.plan_handle = qs.plan_handle
+    LEFT JOIN sys.query_store_plan qsp ON qs.query_plan_hash = qsp.query_plan_hash AND qs.plan_handle = QS.plan_handle
+    OUTER APPLY sys.dm_exec_sql_text(cp.plan_handle)AS sqlText
+    OUTER APPLY sys.dm_exec_query_plan(cp.plan_handle)AS qp
     WHERE
     (
         (@queryLike IS NOT NULL AND CAST(sqlText.text AS NVARCHAR(MAX)) LIKE '%' + @queryLike + '%')
@@ -66,15 +65,12 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
     )
     AND (text NOT LIKE '%@queryLike%')
     ORDER BY last_execution_time DESC
-
 END
 IF ISNULL(@viewHowManyOfObjectTypes, 0) = 1 BEGIN
-
     SELECT objtype, 
     COUNT(*) as NumberOfPlans,
     SUM(CAST(size_in_bytes as bigint))/1024/1024 as SizeInMBs,
     AVG(usecounts) as AvgNumberOfTimesCacheObjectLookedUp
     FROM sys.dm_exec_cached_plans
     GROUP BY objtype
-
 END
