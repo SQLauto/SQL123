@@ -1,8 +1,19 @@
+DECLARE @schemaName NVARCHAR(MAX) = NULL;
 DECLARE @tableName NVARCHAR(100) = NULL;
 DECLARE @indexName NVARCHAR(100) = NULL;
-DECLARE @schemaName NVARCHAR(MAX) = NULL;
+DECLARE @indexId BIGINT = 1;
+
 DECLARE @showIndexData BIT = 1;
-DECLARE @showColumnStatistics BIT = 0;
+DECLARE @unusedIndexes BIT = 0; -- Find out what indexes have never been used.
+DECLARE @showBasicIndex BIT = 1; -- Basic items about a index.
+DECLARE @showIndixLastUpate BIT = 0; -- Shows last updated information for an index.
+DECLARE @showIndixUsage BIT = 0; -- Usage like index scans, seeks, and lookups.
+DECLARE @showIndixColumns BIT = 0; -- Shows items like columns on the index, includes and filters.
+DECLARE @showIndexLeadAndNonLeafUpdates BIT = 0;
+DECLARE @showIndexLocks BIT = 0;
+DECLARE @showIndexfullQuery BIT = 0;
+
+DECLARE @showStatistics BIT = 0;
 
 -- DBCC SHOW_STATISTICS('<schema>.<table name>',<index name>);
 -- NOT RECOMMENDED TO TURN ON PERSIST_SAMPLE_PERCENT
@@ -18,14 +29,50 @@ DECLARE @showColumnStatistics BIT = 0;
 -- ALTER INDEX <INDEX NAME> ON <TABLE NAME> DISABLE; 
 -- ALTER INDEX <INDEX NAME> ON <TABLE NAME> REBUILD; 
 
+-- View Pages for a table
+-- https://kwelsql.wordpress.com/2016/01/31/dbcc-ind-and-dbcc-page/
+-- <DatabaseName or DBID>', '<TableName or ObjectId>', -1
+-- DBCC IND('MyDatabase', 'MyTable', -1)
+
+-- View data for a page
+-- DatabaseName or DBID, filenum, pagenum [, printopt={0|1|2|3}])
+-- DBCC TRACEON (3604)
+-- DBCC PAGE('MyDatabase', 1, 40101, 3)
+-- DBCC TRACEOFF (3604)
+
+IF ISNULL(@showStatistics, 0) = 1 BEGIN
+    SELECT 
+    OBJECT_SCHEMA_NAME(s.object_id) AS SchemaName,
+    OBJECT_NAME(s.object_id) AS TableName,
+    s.name AS StatisticsName,
+    s.stats_id AS StatId,
+    c.name ColumnName,
+    sp.last_updated AS LastUpdated, 
+    sp.rows AS Rows,
+    sp.rows_sampled, 
+    sp.steps, 
+    modification_counter AS ModCounter,
+    persisted_sample_percent 
+    PersistedSamplePercent,
+    (rows_sampled * 100)/rows AS 'Sample %'
+    FROM sys.stats s
+    INNER JOIN sys.stats_columns sc ON s.stats_id = sc.stats_id AND s.object_id = sc.object_id
+    INNER JOIN sys.columns c ON sc.column_id = c.column_id AND c.object_id = sc.object_id
+    INNER JOIN sys.all_columns ac ON ac.column_id = sc.column_id AND ac.object_id = sc.object_id
+    CROSS APPLY sys.dm_db_stats_properties(s.object_id, s.stats_id) sp
+    WHERE (OBJECT_NAME(s.object_id) = @tableName OR @tableName IS NULL)
+    ORDER BY s.object_id ASC, s.stats_id
+END
+
 IF ISNULL(@showIndexData, 0) = 1 BEGIN
+    DROP TABLE IF EXISTS #TempStatistics;
     SELECT 
     OBJECT_SCHEMA_NAME(o.object_id) AS SchemaName,
     o.name AS TableName,
     i.name AS IndexName,
-    i.object_id,
-    i.index_id,
-    i.type_desc AS 'Index Type',
+    i.object_id ObjectId,
+    i.index_id AS IndexId,
+    i.type_desc AS IndexType,
     i.is_disabled AS IsDisabled,
     i.auto_created AS IndexCreatedByAutomaticTuning,
     STATS_DATE(i.object_id,i.index_id) IndexStatisticsLastUpdatedOrCreated,
@@ -40,16 +87,29 @@ IF ISNULL(@showIndexData, 0) = 1 BEGIN
     o.create_date AS TableCreateDateTime, 
     o.modify_date AS TableModifyDateTime,
     ius.user_seeks AS UserSeek,
+    ius.last_user_seek AS LastUserSeek,
     ius.user_scans AS UserScans,
+    ius.last_user_scan AS LastUserScan,
     ius.user_lookups AS UserLookups,
-    ius.user_updates AS Writes,
-    ius.last_user_seek AS LastSeek,
-    ius.last_user_scan AS LastScan,
-    ius.last_user_lookup AS LastLookup,
-    ius.last_user_update AS LastUpdate,
-    ios.leaf_insert_count AS NumOfInserts,
-    ios.leaf_delete_count AS NumOfDeletes,
-    ios.leaf_update_count AS NumOfUpdates,
+    ius.last_user_lookup AS LastUserLookup,
+    ius.user_updates AS UserUpdates,
+    ius.last_user_update AS LastUserUpdates,
+    ius.system_seeks AS SystemSeek,
+    ius.last_system_seek AS LastSystemSeek,
+    ius.system_scans AS SystemScans,
+    ius.last_system_scan AS LastSystemScan,
+    ius.system_lookups AS SystemLookups,
+    ius.last_system_lookup AS LastSystemLookup,
+    ius.system_updates AS SystemUpdates,
+    ius.last_system_update AS LastSystemUpdates,
+    ios.nonleaf_allocation_count AS NonLeafAllocationCount,
+    ios.nonleaf_insert_count AS NonLeafInsertCount,
+    ios.nonleaf_delete_count AS NonLeafDeleteCount,
+    ios.nonleaf_update_count AS NonUpdatesLeafUpdate,
+    ios.leaf_allocation_count AS LeafAllocationCount,
+    ios.leaf_insert_count AS LeafInsertCount,
+    ios.leaf_delete_count AS LeafDeleteCount,
+    ios.leaf_update_count AS UpdatesLeafUpdate,
     oa_index_size.IndexSizeKB,
     oa_index_size.TotalUsedMB,
     oa_index_size.TotalDataMB,
@@ -84,6 +144,7 @@ IF ISNULL(@showIndexData, 0) = 1 BEGIN
     ios.tree_page_io_latch_wait_in_ms,
     ios.page_compression_attempt_count,
     ios.page_compression_success_count
+    INTO #TempStatistics
     FROM sys.indexes i 
     LEFT JOIN sys.dm_db_index_usage_stats ius ON i.index_id = ius.index_id AND ius.object_id = i.object_id
     INNER JOIN sys.objects o ON o.object_id = i.object_id
@@ -91,7 +152,7 @@ IF ISNULL(@showIndexData, 0) = 1 BEGIN
     OUTER APPLY sys.dm_db_stats_properties (object_id(o.name), 1) sp
     OUTER APPLY
     (
-    SELECT
+        SELECT
             SUM(ps.used_page_count) used_pages,
             SUM(ps.reserved_page_count) reserved_pages,
             SUM(ps.used_page_count) * 8 IndexSizeKB,
@@ -131,13 +192,23 @@ IF ISNULL(@showIndexData, 0) = 1 BEGIN
     ) oa_columns
     WHERE (o.name = @tableName OR @tableName IS NULL)
     AND (i.name = @indexName OR @indexName IS NULL)
+    AND (i.index_id = @indexId OR @indexId IS NULL)
     AND (OBJECT_SCHEMA_NAME(o.object_id) = @schemaName OR @schemaName IS NULL)
+    AND OBJECT_SCHEMA_NAME(o.object_id) != 'sys'
     GROUP BY o.object_id, o.name, i.name, i.type_desc, ius.user_seeks,
     o.create_date, o.modify_date,
-    ius.user_scans, ius.user_lookups, ius.user_updates,
-    ius.last_user_seek, ius.last_user_scan, ius.last_user_lookup,
-    ius.last_user_update, ios.leaf_insert_count, ios.leaf_delete_count,
-    ios.leaf_update_count,
+    ius.user_seeks,ius.last_user_seek,
+    ius.user_scans, ius.last_user_scan,
+    ius.user_lookups, ius.last_user_lookup,
+    ius.user_updates, ius.last_user_update,
+    ius.system_seeks, ius.last_system_seek,
+    ius.system_scans, ius.last_system_scan,
+    ius.system_lookups, ius.last_system_lookup,
+    ius.system_updates, ius.last_system_update,
+    ios.nonleaf_allocation_count, ios.nonleaf_insert_count,
+    ios.nonleaf_delete_count, ios.nonleaf_update_count,
+    ios.leaf_allocation_count, ios.leaf_insert_count,
+    ios.leaf_delete_count, ios.leaf_update_count,
     ios.row_lock_count,ios.row_lock_wait_count, ios.row_lock_wait_in_ms,
     page_lock_count, page_lock_wait_count, page_lock_wait_in_ms,
     ios.index_lock_promotion_attempt_count,
@@ -177,30 +248,80 @@ IF ISNULL(@showIndexData, 0) = 1 BEGIN
     sp.persisted_sample_percent,
     sp.rows,
     sp.rows_sampled,
-    sp.steps
-    ORDER BY o.name ASC, i.index_id ASC
-END
+    sp.steps;
 
-IF ISNULL(@showColumnStatistics, 0) = 1 BEGIN
-    SELECT 
-    OBJECT_SCHEMA_NAME(s.object_id) AS SchemaName,
-    OBJECT_NAME(s.object_id) AS TableName,
-    s.name AS StatisticsName,
-    s.stats_id,
-    c.name ColumnName,
-    sp.last_updated AS LastUpdated, 
-    sp.rows AS Rows,
-    sp.rows_sampled, 
-    sp.steps, 
-    modification_counter AS ModCounter,
-    persisted_sample_percent 
-    PersistedSamplePercent,
-    (rows_sampled * 100)/rows AS 'Sample %'
-    FROM sys.stats s
-    INNER JOIN sys.stats_columns sc ON s.stats_id = sc.stats_id AND s.object_id = sc.object_id
-    INNER JOIN sys.columns c ON sc.column_id = c.column_id AND c.object_id = sc.object_id
-    INNER JOIN sys.all_columns ac ON ac.column_id = sc.column_id AND ac.object_id = sc.object_id
-    CROSS APPLY sys.dm_db_stats_properties(s.object_id, s.stats_id) sp
-    WHERE (OBJECT_NAME(s.object_id) = @tableName OR @tableName IS NULL)
-    ORDER BY OBJECT_NAME(s.object_id) ASC, s.stats_id, c.name ASC
+    IF ISNULL(@unusedIndexes, 1) = 1 BEGIN
+        SELECT IndexId, SchemaName, TableName, IndexName, IndexType, ObjectId, DaysOld,
+        RowCountTotal AS CurrentRows, TotalNumberOfModificationsForLeadingStatisticsColumn AS RowsModificatedLastUpdated, 
+        IsDisabled, IndexCreatedByAutomaticTuning AS ByAutomaticTuning,
+        IndexSizeKB, TotalUsedMB,TotalDataMB,ReservedMB,UnusedMB,
+        used_pages AS UsedPages, reserved_pages As ReservedPages,
+        IndexStatisticsLastUpdatedOrCreated AS IndexLastUpdated, TableCreateDateTime AS TableCreate, TableModifyDateTime AS TableModify
+        FROM #TempStatistics
+        WHERE IndexStatisticsLastUpdatedOrCreated IS NULL
+        ORDER BY TableName ASC, IndexId ASC;
+    END
+
+    IF ISNULL(@showBasicIndex, 1) = 1 BEGIN
+        SELECT IndexId, SchemaName, TableName, IndexName, IndexType, ObjectId, DaysOld,
+        RowCountTotal AS CurrentRows, TotalNumberOfModificationsForLeadingStatisticsColumn AS RowsModificatedLastUpdated, 
+        IsDisabled, IndexCreatedByAutomaticTuning AS ByAutomaticTuning,
+        IndexSizeKB, TotalUsedMB,TotalDataMB,ReservedMB,UnusedMB,
+        used_pages AS UsedPages, reserved_pages As ReservedPages,
+        IndexStatisticsLastUpdatedOrCreated AS IndexLastUpdated, TableCreateDateTime AS TableCreate, TableModifyDateTime AS TableModify
+        FROM #TempStatistics
+        ORDER BY TableName ASC, IndexId ASC;
+    END
+
+    IF ISNULL(@showIndixLastUpate, 1) = 1 BEGIN
+        SELECT IndexId, SchemaName, TableName, IndexName,
+        IndexStatisticsLastUpdatedOrCreated AS IndexUpdated, DaysOld,
+        RowCountTotal AS CurrentRows,
+        TotalNumberOfModificationsForLeadingStatisticsColumn AS RowsModificatedLastUpdated,
+        TotalNumberOfRowsSampledForStatisticsCalculations AS RowsSampled,
+        SamplePercent,PersistedSamplePercent,NumberOfStepsInTheHistogram AS StepsInHistogram
+        FROM #TempStatistics
+        ORDER BY TableName ASC, IndexId ASC;
+    END
+
+     IF ISNULL(@showIndixUsage, 1) = 1 BEGIN
+        SELECT IndexId, SchemaName, TableName, IndexName, RowCountTotal AS CurrentRows,
+        UserSeek, LastUserSeek, UserScans, LastUserScan, UserLookups, LastUserLookup, UserUpdates,LastUserUpdates,
+        SystemSeek, LastSystemSeek, SystemScans, LastSystemScan, SystemLookups, LastSystemLookup, SystemUpdates, LastSystemUpdates,
+        LeafInsertCount,LeafDeleteCount,UpdatesLeafUpdate
+        FROM #TempStatistics
+        ORDER BY TableName ASC, IndexId ASC;
+    END   
+
+    IF ISNULL(@showIndixColumns, 1) = 1 BEGIN
+        SELECT IndexId, SchemaName, TableName, IndexName,
+        IndexColumns,IncludeColumns,HasFilter,IndexWhereFilter,IgnoreDupKey,IsPrimaryKey,IsUniqueConstraint
+        FROM #TempStatistics
+        ORDER BY TableName ASC, IndexId ASC;
+    END
+    
+    IF ISNULL(@showIndexLeadAndNonLeafUpdates, 1) = 1 BEGIN
+        SELECT IndexId, SchemaName, TableName, IndexName, IndexType, ObjectId,
+        RowCountTotal AS CurrentRows, TotalNumberOfModificationsForLeadingStatisticsColumn AS RowsModificatedLastUpdated, 
+        NonLeafAllocationCount, NonLeafInsertCount, NonLeafDeleteCount, NonUpdatesLeafUpdate, LeafAllocationCount
+        FROM #TempStatistics
+        ORDER BY TableName ASC, IndexId ASC;
+    END
+    
+    IF ISNULL(@showIndexLocks, 1) = 1 BEGIN
+        SELECT IndexId, SchemaName, TableName, IndexName, RowCountTotal AS CurrentRows,
+        RowLockCount, RowLockWaitCount,RowLockWaitMilliseconds,
+        page_lock_count AS PageLockCount, page_lock_wait_count,page_lock_wait_in_ms,
+        index_lock_promotion_attempt_count,index_lock_promotion_count,page_latch_wait_count, page_latch_wait_in_ms,
+        page_io_latch_wait_count,page_io_latch_wait_in_ms,tree_page_latch_wait_count,tree_page_latch_wait_in_ms,
+        page_compression_attempt_count,page_compression_success_count
+        FROM #TempStatistics
+        ORDER BY TableName ASC, IndexId ASC;
+    END
+
+    IF ISNULL(@showIndexfullQuery, 1) = 1 BEGIN
+        SELECT * 
+        FROM #TempStatistics
+        ORDER BY TableName ASC, IndexId ASC;
+    END
 END
