@@ -1,7 +1,7 @@
 DECLARE @schemaName NVARCHAR(MAX) = NULL;
 DECLARE @tableName NVARCHAR(100) = NULL;
 DECLARE @indexName NVARCHAR(100) = NULL;
-DECLARE @indexId BIGINT = 1;
+DECLARE @indexId BIGINT = NULL;
 
 DECLARE @showIndexData BIT = 1;
 DECLARE @unusedIndexes BIT = 0; -- Find out what indexes have never been used.
@@ -14,20 +14,6 @@ DECLARE @showIndexLocks BIT = 0;
 DECLARE @showIndexfullQuery BIT = 0;
 
 DECLARE @showStatistics BIT = 0;
-
--- DBCC SHOW_STATISTICS('<schema>.<table name>',<index name>);
--- NOT RECOMMENDED TO TURN ON PERSIST_SAMPLE_PERCENT
--- For an index
--- UPDATE STATISTICS <schema>.<table name> <index name> WITH PERSIST_SAMPLE_PERCENT = OFF; -- Turn off manually setting the sampling percent for a index and use SQL Server default.
--- UPDATE STATISTICS <schema>.<table name> <index name> WITH FULLSCAN, PERSIST_SAMPLE_PERCENT = ON; -- Set sampling statistics at 100% for a index , shown in column persisted_sample_percent/PersistedSamplePercent.
--- UPDATE STATISTICS <schema>.<table name> <index name> WITH SAMPLE 60 PERCENT, PERSIST_SAMPLE_PERCENT = ON; -- Set sampling statistics percent for a index , shown in column persisted_sample_percent/PersistedSamplePercent.
--- For entire table
--- UPDATE STATISTICS <schema>.<table name> WITH PERSIST_SAMPLE_PERCENT = OFF; -- Turn off manually setting the sampling percent for the entire table and use SQL Server default.
--- UPDATE STATISTICS <schema>.<table name> WITH FULLSCAN, PERSIST_SAMPLE_PERCENT = ON; -- Set sampling statistics at 100% for the entire table , shown in column persisted_sample_percent/PersistedSamplePercent.
--- UPDATE STATISTICS <schema>.<table name> WITH SAMPLE 60 PERCENT, PERSIST_SAMPLE_PERCENT = ON; -- Set sampling statistics percent for the entire table , shown in column persisted_sample_percent/PersistedSamplePercent.
-
--- ALTER INDEX <INDEX NAME> ON <TABLE NAME> DISABLE; 
--- ALTER INDEX <INDEX NAME> ON <TABLE NAME> REBUILD; 
 
 -- View Pages for a table
 -- https://kwelsql.wordpress.com/2016/01/31/dbcc-ind-and-dbcc-page/
