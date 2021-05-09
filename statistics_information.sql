@@ -42,14 +42,16 @@ s.no_recompute AS Noecompute,
 c.name ColumnName,
 sp.last_updated AS StatsLastUpdated, 
 FORMAT(sp.rows, N'N0') AS StatsRowsOnUpdate,
-sp.steps StatsSteps, 
-FORMAT(500+(0.20*sp.rows), N'N0') AS '20% Threshold',
-FORMAT(SQRT( sp.rows*1000), N'N0') AS 'SQRT Threshold',
 FORMAT(sp.modification_counter, N'N0') AS Modifications,
 FORMAT((CAST(sp.modification_counter AS FLOAT)/CAST(sp.rows AS FLOAT))*100, N'N0') + '%'  AS 'Modification %',
+FORMAT(500+(0.20*sp.rows), N'N0') AS '20% Threshold',
+CAST(FLOOR(sp.modification_counter/(500+(0.20*sp.rows)) * 100) AS NVARCHAR(20)) + '%' AS '% to 20% Threshold',
+FORMAT(SQRT(sp.rows*1000), N'N0') AS 'SQRT Threshold',
+CAST(FLOOR(sp.modification_counter/(SQRT(sp.rows*1000)) * 100) AS NVARCHAR(20)) + '%' AS '% to SQRT Threshold',
 sp.persisted_sample_percent AS 'PersistedSample %',
 FORMAT(sp.rows_sampled, N'N0') AS RowsSampled, 
-FORMAT(((sp.rows_sampled * 100)/sp.rows), 'N0') + '%' AS 'Sample %'
+FORMAT(((sp.rows_sampled * 100)/sp.rows), 'N0') + '%' AS 'Sample %',
+sp.steps StatsSteps
 FROM sys.stats s
 INNER JOIN sys.stats_columns sc ON s.stats_id = sc.stats_id AND s.object_id = sc.object_id
 INNER JOIN sys.columns c ON sc.column_id = c.column_id AND c.object_id = sc.object_id
