@@ -1,12 +1,13 @@
 -- Statistics: https://docs.microsoft.com/en-us/sql/relational-databases/statistics/statistics
 -- Cardinality Estimation: https://docs.microsoft.com/en-us/sql/relational-databases/performance/cardinality-estimation-sql-serve
 -- Row Estimates: https://dba.stackexchange.com/questions/186193/statistics-and-row-estimation
+-- Selectivity : https://www.programmerinterview.com/database-sql/selectivity-in-sql-databases/
 DECLARE @schemaName NVARCHAR(MAX) = NULL;
 DECLARE @tableName NVARCHAR(MAX) = NULL;
 DECLARE @statName NVARCHAR(MAX) = NULL;
 
 -- DBCC SHOW_STATISTICS('<schema>.<table name>',<index name>);
--- Put OPTION(QUERYTRACEON 3604, QUERYTRACEON 2363) at and end of a query to find out why statistics are being used.
+-- Put OPTION(QUERYTRACEON 3604, QUERYTRACEON 2363) at and end of a query to find out why statistics are being used. Will give you the selectivity for the statistic and the calculation being performed and the stat id it used.
 -- ALTER DATABASE <DatabaseName/CURRENT> SET AUTO_CREATE_STATISTICS (ON|OFF);
 -- ALTER DATABASE <DatabaseNam/CURRENTe> SET AUTO_UPDATE_STATISTICS (ON|OFF);
 -- ALTER DATABASE <DatabaseName/CURRENT> SET AUTO_UPDATE_STATISTICS_ASYNC (ON|OFF);
