@@ -6,7 +6,7 @@ DECLARE @schemaName NVARCHAR(MAX) = NULL;
 DECLARE @tableName NVARCHAR(MAX) = NULL;
 DECLARE @statName NVARCHAR(MAX) = NULL;
 
--- DBCC SHOW_STATISTICS('<schema>.<table name>',<index name>);
+-- DBCC SHOW_STATISTICS('DeliveryOrders',<index name>);
 -- Put OPTION(QUERYTRACEON 3604, QUERYTRACEON 2363) at and end of a query to find out why statistics are being used. Will give you the selectivity for the statistic and the calculation being performed and the stat id it used.
 -- ALTER DATABASE <DatabaseName/CURRENT> SET AUTO_CREATE_STATISTICS (ON|OFF);
 -- ALTER DATABASE <DatabaseNam/CURRENTe> SET AUTO_UPDATE_STATISTICS (ON|OFF);
@@ -46,9 +46,9 @@ FORMAT(sp.rows, N'N0') AS StatsRowsOnUpdate,
 FORMAT(sp.modification_counter, N'N0') AS Modifications,
 FORMAT((CAST(sp.modification_counter AS FLOAT)/CAST(sp.rows AS FLOAT))*100, N'N0') + '%'  AS 'Modification %',
 FORMAT(500+(0.20*sp.rows), N'N0') AS '20% Threshold',
-CAST(FLOOR(sp.modification_counter/(500+(0.20*sp.rows)) * 100) AS NVARCHAR(20)) + '%' AS '% to 20% Threshold',
+CAST(FORMAT(FLOOR(sp.modification_counter/(500+(0.20*sp.rows)) * 100), N'N0') AS NVARCHAR(20)) + '%' AS '% to 20% Threshold',
 FORMAT(SQRT(sp.rows*1000), N'N0') AS 'SQRT Threshold',
-CAST(FLOOR(sp.modification_counter/(SQRT(sp.rows*1000)) * 100) AS NVARCHAR(20)) + '%' AS '% to SQRT Threshold',
+CAST(FORMAT(FLOOR(sp.modification_counter/(SQRT(sp.rows*1000)) * 100), 'N0') AS NVARCHAR(20)) + '%' AS '% to SQRT Threshold',
 sp.persisted_sample_percent AS 'PersistedSample %',
 FORMAT(sp.rows_sampled, N'N0') AS RowsSampled, 
 FORMAT(((sp.rows_sampled * 100)/sp.rows), 'N0') + '%' AS 'Sample %',
