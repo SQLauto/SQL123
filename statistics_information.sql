@@ -5,6 +5,9 @@
 DECLARE @schemaName NVARCHAR(MAX) = NULL;
 DECLARE @tableName NVARCHAR(MAX) = NULL;
 DECLARE @statName NVARCHAR(MAX) = NULL;
+DECLARE @orderByModification BIT = 0;
+DECLARE @thresholdSqrtPercent BIT = 1;
+DECLARE @threshold20Percent BIT = 0;
 
 -- DBCC SHOW_STATISTICS('DeliveryOrders',<index name>);
 -- Put OPTION(QUERYTRACEON 3604, QUERYTRACEON 2363) at and end of a query to find out why statistics are being used. Will give you the selectivity for the statistic and the calculation being performed and the stat id it used.
@@ -62,7 +65,11 @@ WHERE (OBJECT_SCHEMA_NAME(s.object_id) = @schemaName OR @schemaName IS NULL)
 AND (OBJECT_NAME(s.object_id) = @tableName OR @tableName IS NULL)
 AND (s.name = @statName OR @statName IS NULL)
 AND OBJECT_SCHEMA_NAME(s.object_id) != 'sys'
-ORDER BY OBJECT_NAME(s.object_id) ASC, s.stats_id
+ORDER BY
+CASE WHEN ISNULL(@threshold20Percent, 0) = 1 THEN FLOOR(sp.modification_counter/(500+(0.20*sp.rows)) * 100) END DESC,
+CASE WHEN ISNULL(@thresholdSqrtPercent, 0) = 1 THEN FLOOR(sp.modification_counter/(SQRT(sp.rows*1000)) * 100) END DESC,
+CASE WHEN ISNULL(@orderByModification, 0) = 1 THEN sp.modification_counter END DESC,
+OBJECT_NAME(s.object_id) ASC, s.stats_id ASC
 
 
 
