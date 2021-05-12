@@ -1,4 +1,6 @@
 -- SELECT * FROM sys.database_scoped_configurations
+-- select * from sys.messages
+-- select * from sys.sql_modules
 
 SELECT 
 Name AS DatabaseName, 

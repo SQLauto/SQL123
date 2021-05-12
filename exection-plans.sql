@@ -15,7 +15,7 @@ DECLARE @lastExecutedDateTime DATETIME2 = NULL;
 DECLARE @objectType NVARCHAR(MAX) = NULL;
 DECLARE @viewExectionPlans BIT = 1; 
 DECLARE @viewHowManyOfObjectTypes BIT = 1;
-DECLARE @howManyRows INT = 20;
+DECLARE @howManyRows INT = 10;
 	
 IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
     SELECT TOP(ISNULL(@howManyRows, 10))
@@ -30,7 +30,9 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
     qs.last_execution_time,
     cp.cacheobjtype, 
     cp.objtype, 
-    OBJECT_ID(qp.objectid) AS ObjectName, 
+    OBJECT_ID(qp.objectid) AS ObjectName,
+    mg.requested_memory_kb/1024 AS RequestedMemoryInMb,
+    mg.granted_memory_kb/1024 AS GrantedMemoryInMb,
     qs.last_rows,
     qs.last_logical_reads, 
     qs.last_logical_writes,
@@ -48,6 +50,7 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
     FROM sys.dm_exec_cached_plans cp
     LEFT JOIN sys.dm_exec_query_stats qs ON cp.plan_handle = qs.plan_handle
     LEFT JOIN sys.query_store_plan qsp ON qs.query_plan_hash = qsp.query_plan_hash AND qs.plan_handle = QS.plan_handle
+    LEFT JOIN sys.dm_exec_query_memory_grants mg ON mg.plan_handle = cp.plan_handle
     OUTER APPLY sys.dm_exec_sql_text(cp.plan_handle) sqlText
     OUTER APPLY sys.dm_exec_query_plan(cp.plan_handle ) qp
 	-- Only works in SQL Server 2019 and greater.

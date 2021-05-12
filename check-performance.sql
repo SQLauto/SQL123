@@ -4,6 +4,18 @@ DECLARE @queryLike NVARCHAR(MAX) = NULL;
 -- You can kill a session with the command below.
 -- KILL { session ID | UOW } [ WITH STATUSONLY ]
 
+SELECT TOP 1 
+dtu_limit AS 'DTU Limit',
+cpu_limit AS 'CPU Limit',
+avg_instance_cpu_percent AS 'Avg Cpu %',
+avg_data_io_percent AS 'Avg IO %',
+avg_log_write_percent AS 'Avg Write %',
+avg_memory_usage_percent AS 'Avg Memory %',
+avg_log_write_percent AS 'Avg Log Write %',
+max_worker_percent AS 'Max Worker %',
+max_session_percent AS 'Max Session %'
+FROM sys.dm_db_resource_stats
+ORDER BY end_time DESC
 
 SELECT
 IIF(req.session_id IS NULL, 'FALSE', 'TRUE') AS IsCurrentRequest,
@@ -24,7 +36,7 @@ t.request_type AS TransactionRequestType,
 t.request_status AS TransactionRequestStatus,
 t.request_reference_count AS TransactionRequestReferenceCount,
 t.request_owner_type AS TransactionRequestOwerType,
-req.granted_query_memory AS GrantedQueryMemoryNumberOfPagesAllocated,
+FORMAT(req.granted_query_memory, N'N0') AS GrantedQueryMemoryNumberOfPagesAllocated,
 req.start_time AS RequestStartDateTime,
 req.total_elapsed_time AS TotalElapsedTimeInMillisecondsRequest,
 sdes.last_request_start_time AS LastSessionStartDateTime,
@@ -33,6 +45,11 @@ sdes.row_count,
 req.wait_time,
 req.wait_type,
 req.wait_resource,
+FORMAT(mg.ideal_memory_kb/1024, N'N0') AS IdealMemoryInMb,
+FORMAT(mg.requested_memory_kb/1024, N'N0') AS RequestedMemoryInMb,
+FORMAT(mg.granted_memory_kb/1024, N'N0') AS GrantedMemoryInMb,
+mg.grant_time AS GrantTime,
+FORMAT(mg.query_cost, N'N0') AS QueryCost,
 req.cpu_time,
 sdes.host_name, 
 sdes.program_name,
@@ -47,6 +64,7 @@ sdest.ObjectName
 FROM sys.dm_exec_sessions AS sdes
 INNER JOIN sys.dm_exec_connections AS sdec ON sdec.session_id = sdes.session_id
 LEFT JOIN  sys.dm_tran_locks t ON sdes.session_id = t.request_session_id
+LEFT JOIN sys.dm_exec_query_memory_grants mg ON sdes.session_id = mg.session_id
 CROSS APPLY 
 (
     SELECT DB_NAME(dbid) AS DatabaseName ,OBJECT_ID(objectid) AS ObjectName,
