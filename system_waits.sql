@@ -4,14 +4,14 @@ SELECT
 up_time.approximate_restart_date AS ApproximateRestartDate,
 wait_type AS Wait_Type,
 CONVERT(VARCHAR(100), FLOOR(wait_time_ms/1000.0/60/60/24)) + 'd'
-+ ':' + CONVERT(VARCHAR(100), FLOOR(wait_time_ms/1000.0 / 60 / 60 % 24)) + 'h'
-+ ':' + CONVERT(VARCHAR(100), FLOOR(wait_time_ms/1000.0 / 60 % 60)) + 'm'
-+ ':' + CONVERT(VARCHAR(100), FLOOR(wait_time_ms/1000.0) % 60)+ 's'
++ ':' + CONVERT(VARCHAR(100), FLOOR(wait_time_ms/1000.0/60/60%24)) + 'h'
++ ':' + CONVERT(VARCHAR(100), FLOOR(wait_time_ms/1000.0/60%60)) + 'm'
++ ':' + CONVERT(VARCHAR(100), FLOOR(wait_time_ms/1000.0)%60)+ 's'
 AS 'Total Duration',
 CONVERT(VARCHAR(100), FLOOR(wait_time_ms/waiting_tasks_count/1000.0/60/60/24)) + 'd'
-+ ':' + CONVERT(VARCHAR(100), FLOOR(wait_time_ms/waiting_tasks_count/1000.0 / 60 / 60 % 24)) + 'h'
-+ ':' + CONVERT(VARCHAR(100), FLOOR(wait_time_ms/waiting_tasks_count/waiting_tasks_count/1000.0 / 60 % 60)) + 'm'
-+ ':' + CONVERT(VARCHAR(100), FLOOR(wait_time_ms/1000.0) % 60)+ 's'
++ ':' + CONVERT(VARCHAR(100), FLOOR(wait_time_ms/waiting_tasks_count/1000.0/60/60%24)) + 'h'
++ ':' + CONVERT(VARCHAR(100), FLOOR(wait_time_ms/waiting_tasks_count/waiting_tasks_count/1000.0/60%60)) + 'm'
++ ':' + CONVERT(VARCHAR(100), FLOOR(wait_time_ms/1000.0)%60)+ 's'
 AS 'Average Wait Time',
 CASE
 	WHEN wait_type = 'RESOURCE_SEMAPHORE' THEN 'Memory Grant'
