@@ -1,25 +1,20 @@
-WITH Waits AS 
+
+SELECT
+ws.WaitType,  
+FORMAT(ws.WaitTimeMS/1000, N'N0') AS WaitTimeInSeconds,
+FORMAT(FLOOR(CAST(ws.WaitTimeMS AS FLOAT)/CAST(wst.TotalWaitTimeMS AS FLOAT)*100), N'N0') + '%' AS '%'
+FROM 
 (
-	SELECT  
-	wait_type,  
-	wait_time_ms / 1000. AS wait_time_s, 
-	100. * wait_time_ms / SUM(wait_time_ms) OVER() AS pct, 
-	ROW_NUMBER() OVER(ORDER BY wait_time_ms DESC) AS rn 
-	FROM sys.dm_os_wait_stats 
-	WHERE wait_type  
-	NOT IN 
-    (
+	SELECT ws.wait_type AS WaitType, SUM(ws.wait_time_ms) AS WaitTimeMS
+	FROM sys.dm_os_wait_stats ws -- Azure it's FROM sys.dm_db_wait_stats os
+	WHERE ws.wait_type NOT IN
+	(
 		'CLR_SEMAPHORE', 'LAZYWRITER_SLEEP', 'RESOURCE_QUEUE', 
 		'SLEEP_TASK', 'SLEEP_SYSTEMTASK', 'SQLTRACE_BUFFER_FLUSH', 'WAITFOR', 
 		'CLR_AUTO_EVENT', 'CLR_MANUAL_EVENT'
-	 ) 
-) -- filter out additional irrelevant waits 
-    
-SELECT W1.wait_type, 
-CAST(W1.wait_time_s AS DECIMAL(12, 2)) AS wait_time_s, 
-CAST(W1.pct AS DECIMAL(12, 2)) AS pct, 
-CAST(SUM(W2.pct) AS DECIMAL(12, 2)) AS running_pct 
-FROM Waits AS W1 
-JOIN Waits AS W2 ON W2.rn <= W1.rn 
-GROUP BY W1.rn, W1.wait_type, W1.wait_time_s,W1.pct 
-HAVING SUM(W2.pct) - W1.pct < 95; -- percentage threshold;
+	) 
+	GROUP BY ws.wait_type
+) ws
+CROSS APPLY (SELECT SUM(wait_time_ms) AS TotalWaitTimeMS FROM sys.dm_os_wait_stats) wst
+WHERE ws.WaitTimeMS / 1000 > 0
+ORDER BY ws.WaitTimeMS DESC
