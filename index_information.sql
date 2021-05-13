@@ -15,17 +15,6 @@ DECLARE @showIndexfullQuery BIT = 0;
 
 DECLARE @showStatistics BIT = 0;
 
--- View Pages for a table
--- https://kwelsql.wordpress.com/2016/01/31/dbcc-ind-and-dbcc-page/
--- <DatabaseName or DBID>', '<TableName or ObjectId>', -1
--- DBCC IND('MyDatabase', 'MyTable', -1)
-
--- View data for a page
--- DatabaseName or DBID, filenum, pagenum [, printopt={0|1|2|3}])
--- DBCC TRACEON (3604)
--- DBCC PAGE('MyDatabase', 1, 40101, 3)
--- DBCC TRACEOFF (3604)
-
 IF ISNULL(@showStatistics, 0) = 1 BEGIN
     SELECT 
     OBJECT_SCHEMA_NAME(s.object_id) AS SchemaName,
