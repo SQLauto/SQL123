@@ -1,4 +1,6 @@
 DECLARE @selectedTypes BIT = 1;
+DECLARE @sortByAverageWaitTime BIT = 1;
+DECLARE @waitTasksCount BIT = 0;
 
 -- DBCC SQLPERF('sys.dm_os_wait_stats', CLEAR);
 SELECT
@@ -11,8 +13,8 @@ CONVERT(VARCHAR(100), FLOOR(wait_time_ms/1000.0/60/60/24)) + 'd'
 AS 'Total Duration',
 CONVERT(VARCHAR(100), FLOOR(wait_time_ms/waiting_tasks_count/1000.0/60/60/24)) + 'd'
 + ':' + CONVERT(VARCHAR(100), FLOOR(wait_time_ms/waiting_tasks_count/1000.0/60/60%24)) + 'h'
-+ ':' + CONVERT(VARCHAR(100), FLOOR(wait_time_ms/waiting_tasks_count/waiting_tasks_count/1000.0/60%60)) + 'm'
-+ ':' + CONVERT(VARCHAR(100), FLOOR(wait_time_ms/1000.0)%60)+ 's'
++ ':' + CONVERT(VARCHAR(100), FLOOR(wait_time_ms/waiting_tasks_count/1000.0/60%60)) + 'm'
++ ':' + CONVERT(VARCHAR(100), FLOOR(wait_time_ms/waiting_tasks_count/1000.0%60)) + 's'
 AS 'Average Wait Time',
 CASE
 	WHEN wait_type = 'RESOURCE_SEMAPHORE' THEN 'Memory Grant'
@@ -24,7 +26,7 @@ CASE
 	ELSE 'Unknown'
 END As WaitDescription,
 FORMAT(waiting_tasks_count, N'N0') AS WaitingTasksCount,
-CAST(CAST(wait_time_ms * 100.0/SUM(wait_time_ms) OVER() AS DECIMAL(10,2)) AS NCHAR(6)) + '%' AS Percentage_WaitTime
+TRIM(CAST(CAST(wait_time_ms * 100.0/SUM(wait_time_ms) OVER() AS DECIMAL(10,2)) AS NCHAR(6))) + '%' AS Percentage_WaitTime
 FROM sys.dm_os_wait_stats
 CROSS APPLY 
 (
@@ -143,4 +145,8 @@ WHERE
     ) 
 )
 AND wait_time_ms >= 1
-ORDER BY wait_time_ms DESC
+-- ORDER BY wait_time_ms DESC
+ORDER BY
+CASE WHEN ISNULL(@sortByAverageWaitTime, 0) = 1 THEN wait_time_ms/waiting_tasks_count END DESC,
+CASE WHEN ISNULL(@waitTasksCount, 0) = 1 THEN waiting_tasks_count END DESC,
+wait_time_ms DESC
