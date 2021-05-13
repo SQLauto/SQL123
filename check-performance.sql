@@ -17,7 +17,7 @@ DECLARE @queryLike NVARCHAR(MAX) = NULL;
 --FROM sys.dm_db_resource_stats
 --ORDER BY end_time DESC
 
-SELECT
+SELECT 
 IIF(req.session_id IS NULL, 'FALSE', 'TRUE') AS IsCurrentRequest,
 @@SPID MyCurrentSessionId,
 sdes.session_id,
@@ -36,15 +36,22 @@ t.request_type AS TransactionRequestType,
 t.request_status AS TransactionRequestStatus,
 t.request_reference_count AS TransactionRequestReferenceCount,
 t.request_owner_type AS TransactionRequestOwerType,
+req.transaction_id,
+req.transaction_isolation_level,
+req.open_transaction_count,
+req.blocking_session_id,
 FORMAT(req.granted_query_memory, N'N0') AS GrantedQueryMemoryNumberOfPagesAllocated,
 req.start_time AS RequestStartDateTime,
 req.total_elapsed_time AS TotalElapsedTimeInMillisecondsRequest,
 sdes.last_request_start_time AS LastSessionStartDateTime,
 sdes.last_request_end_time AS LastSessionEndDateTime,
-sdes.row_count,
 req.wait_time,
 req.wait_type,
 req.wait_resource,
+req.writes,
+req.reads,
+req.logical_reads,
+req.row_count,
 FORMAT(mg.ideal_memory_kb/1024, N'N0') AS IdealMemoryInMb,
 FORMAT(mg.requested_memory_kb/1024, N'N0') AS RequestedMemoryInMb,
 FORMAT(mg.granted_memory_kb/1024, N'N0') AS GrantedMemoryInMb,
@@ -59,8 +66,7 @@ sdes.login_time,
 sdes.nt_domain,
 sdes.nt_user_name,
 sdec.client_net_address,
-sdec.local_net_address,
-sdest.ObjectName
+sdec.local_net_address
 FROM sys.dm_exec_sessions AS sdes
 INNER JOIN sys.dm_exec_connections AS sdec ON sdec.session_id = sdes.session_id
 LEFT JOIN  sys.dm_tran_locks t ON sdes.session_id = t.request_session_id
@@ -80,10 +86,11 @@ CROSS APPLY
             ) AS Query
     FROM sys.dm_exec_sql_text(sdec.most_recent_sql_handle)
 ) sdest
-LEFT  JOIN sys.dm_exec_requests req on sdes.session_id = req.session_id
+LEFT JOIN sys.dm_exec_requests req on sdes.session_id = req.session_id
 WHERE 
 (
-	req.session_id IS NULL OR IIF(req.session_id IS NULL, 0, 1) = @showOnlyCurrentRequest
+    ISNULL(req.session_id, 0) = @showOnlyCurrentRequest
+    OR req.session_id IS NOT NULL
 )
 AND 
 (
