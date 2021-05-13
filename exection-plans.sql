@@ -9,6 +9,7 @@
 -- DBCC FREEPROCCACHE (<plan handle>);
 
 DECLARE @queryLike NVARCHAR(MAX) = NULL;
+DECLARE @queryLikeEscapeKey NCHAR(1) = '\';
 DECLARE @databaseName NVARCHAR(MAX) = NULL;
 DECLARE @queryPlanLike NVARCHAR(MAX) = NULL;
 DECLARE @lastExecutedDateTime DATETIME2 = NULL;
@@ -57,12 +58,12 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 	-- OUTER APPLY sys.dm_exec_query_plan_stats(cp.plan_handle) qps
     WHERE
     (
-        (@queryLike IS NOT NULL AND CAST(sqlText.text AS NVARCHAR(MAX)) LIKE '%' + @queryLike + '%')
+        (@queryLike IS NOT NULL AND CAST(sqlText.text AS NVARCHAR(MAX)) LIKE '%' + @queryLike + '%' ESCAPE @queryLikeEscapeKey)
         OR @queryLike IS NULL
     )
     AND
     (
-        (@queryPlanLike IS NOT NULL AND CAST(qp.query_plan AS NVARCHAR(MAX)) LIKE '%' + @queryPlanLike + '%')
+        (@queryPlanLike IS NOT NULL AND CAST(qp.query_plan AS NVARCHAR(MAX)) LIKE '%' + @queryPlanLike + '%' ESCAPE @queryLikeEscapeKey)
         OR @queryPlanLike IS NULL
     )
     AND
@@ -80,7 +81,7 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
         (@databaseName IS NOT NULL AND DB_NAME(qp.dbid) = @databaseName)
         OR @databaseName IS NULL
     )
-    AND (text NOT LIKE '%@queryLike%')
+    AND (text NOT LIKE '%@queryLike%' ESCAPE @queryLikeEscapeKey)
     ORDER BY last_execution_time DESC
 END
 IF ISNULL(@viewHowManyOfObjectTypes, 0) = 1 BEGIN
