@@ -4,18 +4,18 @@ DECLARE @queryLike NVARCHAR(MAX) = NULL;
 -- You can kill a session with the command below.
 -- KILL { session ID | UOW } [ WITH STATUSONLY ]
 
-SELECT TOP 1 
-dtu_limit AS 'DTU Limit',
-cpu_limit AS 'CPU Limit',
-avg_instance_cpu_percent AS 'Avg Cpu %',
-avg_data_io_percent AS 'Avg IO %',
-avg_log_write_percent AS 'Avg Write %',
-avg_memory_usage_percent AS 'Avg Memory %',
-avg_log_write_percent AS 'Avg Log Write %',
-max_worker_percent AS 'Max Worker %',
-max_session_percent AS 'Max Session %'
-FROM sys.dm_db_resource_stats
-ORDER BY end_time DESC
+--SELECT TOP 1 
+--dtu_limit AS 'DTU Limit',
+--cpu_limit AS 'CPU Limit',
+--avg_instance_cpu_percent AS 'Avg Cpu %',
+--avg_data_io_percent AS 'Avg IO %',
+--avg_log_write_percent AS 'Avg Write %',
+--avg_memory_usage_percent AS 'Avg Memory %',
+--avg_log_write_percent AS 'Avg Log Write %',
+--max_worker_percent AS 'Max Worker %',
+--max_session_percent AS 'Max Session %'
+--FROM sys.dm_db_resource_stats
+--ORDER BY end_time DESC
 
 SELECT
 IIF(req.session_id IS NULL, 'FALSE', 'TRUE') AS IsCurrentRequest,
@@ -83,8 +83,7 @@ CROSS APPLY
 LEFT  JOIN sys.dm_exec_requests req on sdes.session_id = req.session_id
 WHERE 
 (
-    (req.session_id IS NOT NULL OR IIF(req.session_id IS NULL, 0, 1) = @showOnlyCurrentRequest)
-    OR req.session_id IS NOT NULL
+	req.session_id IS NULL OR IIF(req.session_id IS NULL, 0, 1) = @showOnlyCurrentRequest
 )
 AND 
 (

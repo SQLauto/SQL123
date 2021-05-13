@@ -1,5 +1,6 @@
 DECLARE @selectedTypes BIT = 1;
 
+-- DBCC SQLPERF('sys.dm_os_wait_stats', CLEAR);
 SELECT
 up_time.approximate_restart_date AS ApproximateRestartDate,
 wait_type AS Wait_Type,
@@ -23,12 +24,12 @@ CASE
 	ELSE 'Unknown'
 END As WaitDescription,
 FORMAT(waiting_tasks_count, N'N0') AS WaitingTasksCount,
-CAST(CAST(wait_time_ms * 100.0 / SUM(wait_time_ms) OVER() AS DECIMAL(10,2)) AS NCHAR(5)) + '%' AS Percentage_WaitTime
+CAST(CAST(wait_time_ms * 100.0/SUM(wait_time_ms) OVER() AS DECIMAL(10,2)) AS NCHAR(6)) + '%' AS Percentage_WaitTime
 FROM sys.dm_os_wait_stats
 CROSS APPLY 
 (
-	SELECT DATEADD(ms, AVG(-wait_time_ms), GETDATE()) AS approximate_restart_date
-	FROM sys.dm_os_wait_stats w
+	SELECT DATEADD(ms, AVG(-ws.wait_time_ms), GETDATE()) AS approximate_restart_date
+	FROM sys.dm_os_wait_stats ws
 	WHERE wait_type IN ('DIRTY_PAGE_POLL','HADR_FILESTREAM_IOMGR_IOCOMPLETION','LAZYWRITER_SLEEP','LOGMGR_QUEUE','REQUEST_FOR_DEADLOCK_SEARCH','XE_DISPATCHER_WAIT','XE_TIMER_EVENT')
 ) up_time
 WHERE 
