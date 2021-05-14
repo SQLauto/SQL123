@@ -1,6 +1,17 @@
 DECLARE @schemaName NVARCHAR(MAX) = NULL;
 DECLARE @tableName NVARCHAR(MAX) = NULL;
 
+-- View Pages for a table
+-- https://kwelsql.wordpress.com/2016/01/31/dbcc-ind-and-dbcc-page/
+-- <DatabaseName or DBID>', '<TableName or ObjectId>', -1
+-- DBCC IND('MyDatabase', 'MyTable', -1)
+
+-- View data for a page
+-- DatabaseName or DBID, filenum, pagenum [, printopt={0|1|2|3}])
+-- DBCC TRACEON (3604)
+-- DBCC PAGE('MyDatabase', 1, 40101, 3)
+-- DBCC TRACEOFF (3604)
+
 SELECT
 OBJECT_SCHEMA_NAME(t.object_id) AS SchemaName,
 t.NAME AS TableName,
