@@ -3,14 +3,14 @@ DECLARE @tableName NVARCHAR(MAX) = NULL;
 
 -- View Pages for a table
 -- https://kwelsql.wordpress.com/2016/01/31/dbcc-ind-and-dbcc-page/
--- <DatabaseName or DBID>', '<TableName or ObjectId>', -1
--- DBCC IND('MyDatabase', 'MyTable', -1)
+-- <DatabaseName or DBID>', '<TableName or ObjectId>', <index number, or -1 to see all indexes page details>
+-- DBCC IND('<database>', '<table>', -1)
 
 -- View data for a page
--- DatabaseName or DBID, filenum, pagenum [, printopt={0|1|2|3}])
--- DBCC TRACEON (3604)
--- DBCC PAGE('MyDatabase', 1, 40101, 3)
--- DBCC TRACEOFF (3604)
+-- DatabaseName or DBID, PageFID, PageID [, printopt={0|1|2|3}])
+ --DBCC TRACEON (3604)
+ --DBCC PAGE('<database>', 1, 76713, 3)
+ --DBCC TRACEOFF (3604)
 
 SELECT
 OBJECT_SCHEMA_NAME(t.object_id) AS SchemaName,
