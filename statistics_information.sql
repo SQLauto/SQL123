@@ -1,3 +1,4 @@
+-- MAAGeneration
 -- Statistics: https://docs.microsoft.com/en-us/sql/relational-databases/statistics/statistics
 -- Cardinality Estimation: https://docs.microsoft.com/en-us/sql/relational-databases/performance/cardinality-estimation-sql-serve
 -- Row Estimates: https://dba.stackexchange.com/questions/186193/statistics-and-row-estimation
@@ -9,7 +10,8 @@ DECLARE @orderByModification BIT = 0;
 DECLARE @thresholdSqrtPercent BIT = 1;
 DECLARE @threshold20Percent BIT = 0;
 
--- DBCC SHOW_STATISTICS('MyTable',<index name>);
+-- AVG_RANGE_ROWS = RANGE_ROWS/DISTINCT_RANGE_ROWS
+-- DBCC SHOW_STATISTICS('Users',_WA_Sys_00000005_08EA5793);
 -- Put OPTION(QUERYTRACEON 3604, QUERYTRACEON 2363) at and end of a query to find out why statistics are being used. Will give you the selectivity for the statistic and the calculation being performed and the stat id it used.
 -- ALTER DATABASE <DatabaseName/CURRENT> SET AUTO_CREATE_STATISTICS (ON|OFF);
 -- ALTER DATABASE <DatabaseNam/CURRENTe> SET AUTO_UPDATE_STATISTICS (ON|OFF);

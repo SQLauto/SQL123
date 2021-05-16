@@ -8,7 +8,7 @@ compatibility_level AS CompatibilityLevel,
 N'https://docs.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql-compatibility-level' AS CompatibiltyList
 FROM sys.databases
 
-SELECT database_id, create_date, snapshot_isolation_state, snapshot_isolation_state_desc, is_read_committed_snapshot_on, *
+SELECT database_id, create_date, snapshot_isolation_state, snapshot_isolation_state_desc, is_read_committed_snapshot_on,MAXDOP, *
 FROM SYS.databases
 
 -- Make sure all users are off the database.
@@ -17,10 +17,46 @@ FROM SYS.databases
 --GO
 --ALTER DATABASE <database> SET ALLOW_SNAPSHOT_ISOLATION ON/OFF;
 
+--ALTER DATABASE <database> SET READ_COMMITTED_SNAPSHOT ON/OFF;
+--GO
+
+-- Check maxdop for the database.
+SELECT * FROM sys.database_scoped_configurations WHERE name = 'MAXDOP'
+
+-- Value should be between 4 and 8
+-- This is the database level configuration.  
+-- Should change at the server level.
+-- ALTER DATABASE SCOPED CONFIGURATION SET MAXDOP = 2;
+
+EXEC sp_configure 'show advanced options', 1;  
+GO
+RECONFIGURE;
+-- If you get an error, run the lines above first 
+-- Minimum should be between 4 and 8
+EXEC sp_configure 'max degree of parallelism' 
+
+EXEC sp_configure 'show advanced options', 1;  
+GO
+RECONFIGURE;
+-- If you get an error, run the lines above first
+EXEC sp_configure 'cost threshold for parallelism'
+
+-- Change `cost threshold for parallelism` to 10.
+EXEC sp_configure 'cost threshold for parallelism', 10 ;  
+GO  
+RECONFIGURE  
+GO  
+
+EXEC sp_configure 'show advanced options', 0;  
+GO
+RECONFIGURE
+
 select * from sys.database_files;
 select * from tempdb.sys.database_files;
 select cmd,* from sys.sysprocesses where blocked > 0
 select * from sys.dm_tran_locks
+select * from sys.dm_os_memory_clerks
+select * from  sys.dm_os_schedulers
 
  SELECT name AS FileName,
     size*1.0/128 AS FileSizeInMB,

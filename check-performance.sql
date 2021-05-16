@@ -1,3 +1,4 @@
+-- MAAGeneration
 DECLARE @showOnlyCurrentRequest BIT = 1;
 DECLARE @showMyCurrentSession BIT = 0;
 DECLARE @queryLike NVARCHAR(MAX) = NULL;
@@ -75,7 +76,7 @@ CROSS APPLY
 
 SELECT 
 IIF(req.session_id IS NULL, 'FALSE', 'TRUE') AS IsCurrentRequest,
-DB_NAME() AS DatabaseName,
+sdest.DatabaseName,
 @@SPID MyCurrentSessionId,
 sdes.session_id as SessionId,
 req.blocking_session_id AS BlockingSessionId,

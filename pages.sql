@@ -1,3 +1,4 @@
+-- MAAGeneration
 DECLARE @schemaName NVARCHAR(MAX) = NULL;
 DECLARE @tableName NVARCHAR(MAX) = NULL;
 
