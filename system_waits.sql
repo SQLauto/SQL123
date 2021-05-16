@@ -1,4 +1,4 @@
--- MAAGeneration
+-- MAAIgnore
 DECLARE @selectedTypes BIT = 1;
 DECLARE @sortByAverageWaitTime BIT = 1;
 DECLARE @waitTasksCount BIT = 0;

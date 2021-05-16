@@ -1,3 +1,4 @@
+-- MAAIgnore
 SELECT w.session_id
 , w.wait_duration_ms
 , w.wait_type

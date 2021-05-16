@@ -1,4 +1,4 @@
--- MAAGeneration
+-- MAAIgnore
 -- Indexes: https://docs.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide
 -- Joins: https://docs.microsoft.com/en-us/sql/relational-databases/performance/joins
 -- Removing Cache: https://www.sqlskills.com/blogs/glenn/eight-different-ways-to-clear-the-sql-server-plan-cache/
@@ -110,7 +110,7 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
         (@queryLike IS NOT NULL AND CAST(sqlText.text AS NVARCHAR(MAX)) LIKE '%' + @queryLike + '%' ESCAPE @queryLikeEscapeKey)
         OR @queryLike IS NULL
     )
-	AND sqlText.text NOT LIKE '%MAAGeneration%'
+	AND sqlText.text NOT LIKE '%MAAIgnore%'
     AND
     (
         (@lastExecutedDateTime IS NOT NULL AND qs.last_execution_time > @lastExecutedDateTime)

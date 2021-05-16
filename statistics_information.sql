@@ -1,4 +1,4 @@
--- MAAGeneration
+-- MAAIgnore
 -- Statistics: https://docs.microsoft.com/en-us/sql/relational-databases/statistics/statistics
 -- Cardinality Estimation: https://docs.microsoft.com/en-us/sql/relational-databases/performance/cardinality-estimation-sql-serve
 -- Row Estimates: https://dba.stackexchange.com/questions/186193/statistics-and-row-estimation

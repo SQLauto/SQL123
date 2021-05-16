@@ -1,4 +1,4 @@
--- MAAGeneration
+-- MAAIgnore
 DECLARE @showOnlyCurrentRequest BIT = 1;
 DECLARE @showMyCurrentSession BIT = 0;
 DECLARE @queryLike NVARCHAR(MAX) = NULL;
