@@ -397,7 +397,6 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 	AS MaxCPUWirkerTime,
 
 	sqlText.number AS NumberedStoredProcedure,
-    txpt.execution_count AS NumberOfTimesPlanHasExecutedSinceLastCompiled,
     txpt.usecounts As NumberOfTimesCacheObjectLookedUp,
     txpt.refcounts AS NumberOfCacheObjectsReferencingThisCacheObject, 
 	LEN(sqlText.text) QueryLength,
