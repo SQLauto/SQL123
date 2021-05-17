@@ -37,103 +37,209 @@ DECLARE @excutedInPastMinutes INT = NULL;
 	
 DROP TABLE IF EXISTS #TempExectionPlanTable;
 IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
-	SELECT
-    qsp.plan_id,
-	qs.plan_generation_num,	
-    qs.creation_time,
-    qs.last_execution_time,
-    cp.cacheobjtype, 
-    cp.objtype, 
-	execution_count,
-	qs.total_elapsed_time,
-	qs.last_elapsed_time,
-	qs.min_elapsed_time,
-	qs.max_elapsed_time,
-	cp.size_in_bytes,
-	qs.total_rows,
-	qs.last_rows,
-	qs.min_rows,
-	qs.Max_rows,
-	qs.total_logical_reads,
-    qs.last_logical_reads,
-	qs.min_logical_reads,
-	qs.max_logical_reads,
-	qs.total_physical_reads,
-	qs.last_physical_reads,
-	qs.min_physical_reads,
-	qs.max_physical_reads,
-	qs.total_logical_writes,
-    qs.last_logical_writes,
-	qs.min_logical_writes,
-	qs.max_logical_writes,
-    qs.total_grant_kb,
-	qs.last_grant_kb,
-	qs.min_grant_kb,
-	qs.max_grant_kb,
-	qs.total_ideal_grant_kb,
-	qs.last_ideal_grant_kb,
-	qs.min_ideal_grant_kb,
-	qs.max_ideal_grant_kb,
-	qs.total_used_grant_kb,
-	qs.last_used_grant_kb,
-	qs.min_used_grant_kb,
-	qs.max_used_grant_kb,
-	qs.total_dop,
-	qs.last_dop,
-	qs.min_dop,
-	qs.max_dop,
-	qs.total_spills,
-	qs.last_spills,
-	qs.min_spills,
-	qs.max_spills,
-	qs.total_used_threads,
-	qs.last_used_threads,
-	qs.min_used_threads,
-	qs.max_used_threads,
-	qs.total_worker_time,
-	qs.last_worker_time,
-	qs.min_worker_time,
-	qs.max_worker_time,
-    cp.usecounts,
-    cp.refcounts, 
-	qs.statement_start_offset,
-	qs.statement_end_offset,
-    cp.plan_handle,
-	sqlText.Text
+	SELECT *
 	INTO #TempExectionPlanTable
-    FROM sys.dm_exec_cached_plans cp
-	OUTER APPLY sys.dm_exec_sql_text(cp.plan_handle) sqlText
-    LEFT JOIN sys.dm_exec_query_stats qs ON cp.plan_handle = qs.plan_handle
-    LEFT JOIN sys.query_store_plan qsp ON qs.query_plan_hash = qsp.query_plan_hash AND qs.plan_handle = QS.plan_handle
-	WHERE
-    (
-        (@queryLike IS NOT NULL AND CAST(sqlText.text AS NVARCHAR(MAX)) LIKE '%' + @queryLike + '%' ESCAPE @queryLikeEscapeKey)
-        OR @queryLike IS NULL
-    )
-	AND sqlText.text NOT LIKE '%MAAIgnore%'
-    AND
-    (
-        (@lastExecutedDateTime IS NOT NULL AND qs.last_execution_time > @lastExecutedDateTime)
-        OR @lastExecutedDateTime IS NULL
-    )
-    AND
-    (
-        (@objectType IS NOT NULL AND cp.objtype = @objectType)
-        OR @objectType IS NULL
-    )
-	AND
-    (
-        (@databaseName IS NOT NULL AND DB_NAME(sqlText.dbid) = @databaseName)
-        OR @databaseName IS NULL
-    )
-
-	AND (@excutedInPastMinutes IS NULL OR qs.last_execution_time > DATEADD(minute, -@excutedInPastMinutes, GETDATE()))
-
-
+	FROM
+	(
+		SELECT
+		'Query' AS StatType,
+		NULL AS type_desc,
+		qsp.plan_id,
+		/* This will normally get incremented when statistics are updated. */
+		qs.plan_generation_num,	
+		qs.creation_time,
+		qs.last_execution_time,
+		cp.cacheobjtype, 
+		cp.objtype, 
+		execution_count,
+		qs.total_elapsed_time,
+		qs.last_elapsed_time,
+		qs.min_elapsed_time,
+		qs.max_elapsed_time,
+		cp.size_in_bytes,
+		qs.total_rows,
+		qs.last_rows,
+		qs.min_rows,
+		qs.Max_rows,
+		qs.total_num_page_server_reads,
+		qs.last_num_page_server_reads,
+		qs.min_num_page_server_reads,
+		qs.max_num_page_server_reads,
+		qs.total_logical_reads,
+		qs.last_logical_reads,
+		qs.min_logical_reads,
+		qs.max_logical_reads,
+		qs.total_physical_reads,
+		qs.last_physical_reads,
+		qs.min_physical_reads,
+		qs.max_physical_reads,
+		qs.total_logical_writes,
+		qs.last_logical_writes,
+		qs.min_logical_writes,
+		qs.max_logical_writes,
+		qs.total_grant_kb,
+		qs.last_grant_kb,
+		qs.min_grant_kb,
+		qs.max_grant_kb,
+		qs.total_ideal_grant_kb,
+		qs.last_ideal_grant_kb,
+		qs.min_ideal_grant_kb,
+		qs.max_ideal_grant_kb,
+		qs.total_used_grant_kb,
+		qs.last_used_grant_kb,
+		qs.min_used_grant_kb,
+		qs.max_used_grant_kb,
+		qs.total_dop,
+		qs.last_dop,
+		qs.min_dop,
+		qs.max_dop,
+		qs.total_spills,
+		qs.last_spills,
+		qs.min_spills,
+		qs.max_spills,
+		qs.total_used_threads,
+		qs.last_used_threads,
+		qs.min_used_threads,
+		qs.max_used_threads,
+		qs.total_worker_time,
+		qs.last_worker_time,
+		qs.min_worker_time,
+		qs.max_worker_time,
+		cp.usecounts,
+		cp.refcounts, 
+		qs.statement_start_offset,
+		qs.statement_end_offset,
+		cp.plan_handle,
+		sqlText.Text
+		FROM sys.dm_exec_cached_plans cp
+		OUTER APPLY sys.dm_exec_sql_text(cp.plan_handle) sqlText
+		LEFT JOIN sys.dm_exec_query_stats qs ON cp.plan_handle = qs.plan_handle
+		LEFT JOIN sys.query_store_plan qsp ON qs.query_plan_hash = qsp.query_plan_hash AND qs.plan_handle = QS.plan_handle
+		WHERE
+		(
+			(@queryLike IS NOT NULL AND CAST(sqlText.text AS NVARCHAR(MAX)) LIKE '%' + @queryLike + '%' ESCAPE @queryLikeEscapeKey)
+			OR @queryLike IS NULL
+		)
+		AND sqlText.text NOT LIKE '%MAAIgnore%'
+		AND
+		(
+			(@lastExecutedDateTime IS NOT NULL AND qs.last_execution_time > @lastExecutedDateTime)
+			OR @lastExecutedDateTime IS NULL
+		)
+		AND
+		(
+			(@objectType IS NOT NULL AND cp.objtype = @objectType)
+			OR @objectType IS NULL
+		)
+		AND
+		(
+			(@databaseName IS NOT NULL AND DB_NAME(sqlText.dbid) = @databaseName)
+			OR @databaseName IS NULL
+		)
+		AND (@excutedInPastMinutes IS NULL OR qs.last_execution_time > DATEADD(minute, -@excutedInPastMinutes, GETDATE()))
+		UNION ALL
+		SELECT
+		'USP' AS StatType,
+		qs.type_desc,
+		NULL AS plan_id,
+		NULL AS plan_generation_num,	
+		NULL as creation_time,
+		qs.last_execution_time,
+		cp.cacheobjtype, 
+		cp.objtype, 
+		execution_count,
+		qs.total_elapsed_time,
+		qs.last_elapsed_time,
+		qs.min_elapsed_time,
+		qs.max_elapsed_time,
+		cp.size_in_bytes,
+		NULL AS total_rows,
+		NULL AS last_rows,
+		NULL AS min_rows,
+		NULL AS max_rows,
+		qs.total_num_page_server_reads,
+		qs.last_num_page_server_reads,
+		qs.min_num_page_server_reads,
+		qs.max_num_page_server_reads,
+		qs.total_logical_reads,
+		qs.last_logical_reads,
+		qs.min_logical_reads,
+		qs.max_logical_reads,
+		qs.total_physical_reads,
+		qs.last_physical_reads,
+		qs.min_physical_reads,
+		qs.max_physical_reads,
+		qs.total_logical_writes,
+		qs.last_logical_writes,
+		qs.min_logical_writes,
+		qs.max_logical_writes,
+		0 AS total_grant_kb,
+		0 AS last_grant_kb,
+		0 AS min_grant_kb,
+		0 AS max_grant_kb,
+		0 AS total_ideal_grant_kb,
+		0 AS last_ideal_grant_kb,
+		0 AS min_ideal_grant_kb,
+		0 AS max_ideal_grant_kb,
+		0 AS total_used_grant_kb,
+		0 AS last_used_grant_kb,
+		0 AS min_used_grant_kb,
+		0 AS max_used_grant_kb,
+		0 AS total_dop,
+		0 AS last_dop,
+		0 AS min_dop,
+		0 AS max_dop,
+		qs.total_spills,
+		qs.last_spills,
+		qs.min_spills,
+		qs.max_spills,
+		0 AS total_used_threads,
+		0 AS last_used_threads,
+		0 AS min_used_threads,
+		0 AS max_used_threads,
+		qs.total_worker_time,
+		qs.last_worker_time,
+		qs.min_worker_time,
+		qs.max_worker_time,
+		cp.usecounts,
+		cp.refcounts, 
+		0 AS statement_start_offset,
+		0 AS statement_end_offset,
+		cp.plan_handle,
+		sqlText.Text
+		FROM sys.dm_exec_cached_plans cp
+		OUTER APPLY sys.dm_exec_sql_text(cp.plan_handle) sqlText
+		LEFT JOIN sys.dm_exec_procedure_stats qs ON cp.plan_handle = qs.plan_handle
+		WHERE
+		(
+			(@queryLike IS NOT NULL AND CAST(sqlText.text AS NVARCHAR(MAX)) LIKE '%' + @queryLike + '%' ESCAPE @queryLikeEscapeKey)
+			OR @queryLike IS NULL
+		)
+		AND sqlText.text NOT LIKE '%MAAIgnore%'
+		AND
+		(
+			(@lastExecutedDateTime IS NOT NULL AND qs.last_execution_time > @lastExecutedDateTime)
+			OR @lastExecutedDateTime IS NULL
+		)
+		AND
+		(
+			(@objectType IS NOT NULL AND cp.objtype = @objectType)
+			OR @objectType IS NULL
+		)
+		AND
+		(
+			(@databaseName IS NOT NULL AND DB_NAME(sqlText.dbid) = @databaseName)
+			OR @databaseName IS NULL
+		)
+		AND (@excutedInPastMinutes IS NULL OR qs.last_execution_time > DATEADD(minute, -@excutedInPastMinutes, GETDATE()))
+	) StatisticsTable;
+	
 	SELECT TOP(ISNULL(@howManyRows, 10))
+	txpt.StatType,
+	txpt.type_desc AS TypeDesc,
 	DB_NAME(sqlText.dbid) DatabaseName,
 	FORMAT(execution_count, N'N0') AS ExecutionCount,
-	OBJECT_ID(sqlText.objectid) AS ObjectName,
+	OBJECT_NAME(sqlText.objectid) AS ObjectName,
     txpt.plan_id AS QueryStorePlanId,
 	txpt.plan_generation_num AS GenerationNumber,	
     txpt.creation_time AS CompiledDateTime,
@@ -189,6 +295,12 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 	FORMAT(txpt.last_rows, N'N0') AS LastRows,
 	FORMAT(txpt.min_rows, N'N0') AS MinRows,
 	FORMAT(txpt.Max_rows, N'N0') AS MaxRows,
+
+	FORMAT(txpt.total_num_page_server_reads/txpt.execution_count, N'N0') AS TotalNumPageServerReads,
+	FORMAT(txpt.total_num_page_server_reads, N'N0') AS TotalNumPageServerReads,
+	FORMAT(txpt.last_num_page_server_reads, N'N0') AS LastNumPageServerReads,
+	FORMAT(txpt.min_num_page_server_reads, N'N0') AS MinNumPageServerReads,
+	FORMAT(txpt.max_num_page_server_reads, N'N0') AS MaxNumPageServerReads,
 
 	FORMAT(txpt.total_logical_reads/txpt.execution_count, N'N0') AS AvgLogicalReads,
 	FORMAT(txpt.total_logical_reads, N'N0') AS TotalLogicalReads,

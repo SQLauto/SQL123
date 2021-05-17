@@ -11,7 +11,7 @@ DECLARE @thresholdSqrtPercent BIT = 1;
 DECLARE @threshold20Percent BIT = 0;
 
 -- AVG_RANGE_ROWS = RANGE_ROWS/DISTINCT_RANGE_ROWS
--- DBCC SHOW_STATISTICS('Users',_WA_Sys_00000005_08EA5793);
+-- DBCC SHOW_STATISTICS('MyTable', MyStatisticsName);
 -- Put OPTION(QUERYTRACEON 3604, QUERYTRACEON 2363) at and end of a query to find out why statistics are being used. Will give you the selectivity for the statistic and the calculation being performed and the stat id it used.
 -- ALTER DATABASE <DatabaseName/CURRENT> SET AUTO_CREATE_STATISTICS (ON|OFF);
 -- ALTER DATABASE <DatabaseNam/CURRENTe> SET AUTO_UPDATE_STATISTICS (ON|OFF);
