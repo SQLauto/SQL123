@@ -15,37 +15,39 @@ DECLARE @queryLikeEscapeKey NCHAR(1) = '\';
 DECLARE @databaseName NVARCHAR(MAX) = DB_NAME();
 DECLARE @queryPlanLike NVARCHAR(MAX) = NULL;
 DECLARE @lastExecutedDateTime DATETIME2 = NULL;
-DECLARE @objectType NVARCHAR(MAX) = NULL;
 DECLARE @viewExectionPlans BIT = 1; 
 DECLARE @viewHowManyOfObjectTypes BIT = 1;
-DECLARE @howManyRows INT = 10;
+DECLARE @howManyRows INT = 50;
+/* All types are: 'UsrTab;Prepared;View;Adhoc;Trigger;Proc' */
+DECLARE @objectTypes NVARCHAR(MAX) = 'UsrTab;Prepared;View;Adhoc;Trigger;Proc';
 
 -- Order Bys
 DECLARE @last_logical_reads BIT = 0;
-DECLARE @avg_logical_reads BIT = 1;
+DECLARE @avg_logical_reads BIT = 0;
 DECLARE @lastCPU BIT = 0;
 DECLARE @avgCPU BIT = 0;
 DECLARE @lastMemoryGrant BIT = 0;
-DECLARE @avgMemoryGrant BIT = 0;
+DECLARE @avgMemoryGrant BIT = 1;
 DECLARE @lastSpills BIT = 0;
 DECLARE @avgSpills BIT = 0;
 DECLARE @lastDuration BIT = 0;
 DECLARE @avgDuration BIT = 0;
 DECLARE @exectionCount BIT = 0;
+DECLARE @showPlanIds BIT = 0;
 
 DECLARE @excutedInPastMinutes INT = NULL;
 	
 DROP TABLE IF EXISTS #TempExectionPlanTable;
 IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
-	SELECT *
+	SELECT DISTINCT *
 	INTO #TempExectionPlanTable
 	FROM
 	(
 		SELECT
 		'Query' AS StatType,
 		NULL AS type_desc,
-		qsp.plan_id,
-		/* This will normally get incremented when statistics are updated. */
+	 	IIF(ISNULL(@showPlanIds, 0) = 0, NULL, qsp.plan_id)  AS plan_id,
+ 		/* This will normally get incremented when statistics are updated. */
 		qs.plan_generation_num,	
 		qs.creation_time,
 		qs.last_execution_time,
@@ -128,8 +130,8 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 		)
 		AND
 		(
-			(@objectType IS NOT NULL AND cp.objtype = @objectType)
-			OR @objectType IS NULL
+			(@objectTypes IS NOT NULL AND cp.objtype IN(SELECT VALUE FROM STRING_SPLIT(@objectTypes, ';')))
+			OR @objectTypes IS NULL
 		)
 		AND
 		(
@@ -223,8 +225,8 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 		)
 		AND
 		(
-			(@objectType IS NOT NULL AND cp.objtype = @objectType)
-			OR @objectType IS NULL
+			(@objectTypes IS NOT NULL AND cp.objtype IN(SELECT VALUE FROM STRING_SPLIT(@objectTypes, ';')))
+			OR @objectTypes IS NULL
 		)
 		AND
 		(
@@ -252,40 +254,40 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.total_elapsed_time/txpt.execution_count/1000000.0/60/60%24)) + 'h'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.total_elapsed_time/txpt.execution_count/1000000.0/60%60)) + 'm'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.total_elapsed_time/txpt.execution_count/1000000.0%60)) + 's'
-	+ ':' + CONVERT(VARCHAR(100), txpt.total_elapsed_time/txpt.execution_count/1000000%1000) + 'ms'
-	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.total_elapsed_time/txpt.execution_count%1000000), 2) + 'ns'
+	+ ':' + CONVERT(VARCHAR(100), txpt.total_elapsed_time/txpt.execution_count/1000%1000) + 'ms'
+	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.total_elapsed_time/txpt.execution_count%1000), 3) + 'ns'
 	AS AvgDuration,
 
 	CONVERT(VARCHAR(100), FLOOR(txpt.total_elapsed_time/1000000.0/60/60/24)) + 'd'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.total_elapsed_time/1000000.0/60/60%24)) + 'h'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.total_elapsed_time/1000000.0/60%60)) + 'm'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.total_elapsed_time/1000000.0%60)) + 's'
-	+ ':' + CONVERT(VARCHAR(100), txpt.total_elapsed_time/1000000%1000) + 'ms'
-	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.total_elapsed_time%1000000), 2) + 'ns'
+	+ ':' + CONVERT(VARCHAR(100), txpt.total_elapsed_time/1000%1000) + 'ms'
+	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.total_elapsed_time%1000), 3) + 'ns'
 	AS TotalDuration,
 
 	CONVERT(VARCHAR(100), FLOOR(txpt.last_elapsed_time/1000000.0/60/60/24)) + 'd'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.last_elapsed_time/1000000.0/60/60%24)) + 'h'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.last_elapsed_time/1000000.0/60%60)) + 'm'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.last_elapsed_time/1000000.0%60)) + 's'
-	+ ':' + CONVERT(VARCHAR(100), txpt.last_elapsed_time/1000000 % 1000) + 'ms'
-	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.last_elapsed_time%1000000), 2) + 'ns'
+	+ ':' + CONVERT(VARCHAR(100), txpt.last_elapsed_time/1000%1000) + 'ms'
+	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.last_elapsed_time%1000), 3) + 'ns'
 	AS LastDuration,
 
 	CONVERT(VARCHAR(100), FLOOR(txpt.min_elapsed_time/1000000.0/60/60/24)) + 'd'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.min_elapsed_time/1000000.0/60/60%24)) + 'h'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.min_elapsed_time/1000000.0/60%60)) + 'm'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.min_elapsed_time/1000000.0%60)) + 's'
-	+ ':' + CONVERT(VARCHAR(100), txpt.min_elapsed_time/1000000 % 1000) + 'ms'
-	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.min_elapsed_time%1000000), 2) + 'ns'
+	+ ':' + CONVERT(VARCHAR(100), txpt.min_elapsed_time/1000%1000) + 'ms'
+	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.min_elapsed_time%1000), 3) + 'ns'
 	AS MinDuration,
 
 	CONVERT(VARCHAR(100), FLOOR(txpt.max_elapsed_time/1000000.0/60/60/24)) + 'd'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.max_elapsed_time/1000000.0/60/60%24)) + 'h'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.max_elapsed_time/1000000.0/60%60)) + 'm'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.max_elapsed_time/1000000.0%60)) + 's'
-	+ ':' + CONVERT(VARCHAR(100), txpt.max_elapsed_time/1000000 % 1000) + 'ms'
-	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.max_elapsed_time%1000000), 2) + 'ns'
+	+ ':' + CONVERT(VARCHAR(100), txpt.max_elapsed_time/1000%1000) + 'ms'
+	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.max_elapsed_time%1000), 3) + 'ns'
 	AS MaDuration,
 
 	FORMAT(txpt.size_in_bytes, N'N0') AS SizeInBytes,
@@ -360,40 +362,40 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.total_worker_time/txpt.execution_count/1000000.0/60/60%24)) + 'h'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.total_worker_time/txpt.execution_count/1000000.0/60%60)) + 'm'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.total_worker_time/txpt.execution_count/1000000.0%60)) + 's'
-	+ ':' + CONVERT(VARCHAR(100), txpt.total_worker_time/txpt.execution_count/1000000 % 1000) + 'ms'
-	+ ':' + LEFT(CONVERT(VARCHAR(100),  txpt.total_worker_time/txpt.execution_count%1000000), 2) + 'ns'
+	+ ':' + CONVERT(VARCHAR(100), txpt.total_worker_time/txpt.execution_count/1000%1000) + 'ms'
+	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.total_worker_time/txpt.execution_count%1000), 3) + 'ns'
 	AS AvgCPUWirkerTime,
 
 	CONVERT(VARCHAR(100), FLOOR(txpt.total_worker_time/1000000.0/60/60/24)) + 'd'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.total_worker_time/1000000.0/60/60%24)) + 'h'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.total_worker_time/1000000.0/60%60)) + 'm'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.total_worker_time/1000000.0%60)) + 's'
-	+ ':' + CONVERT(VARCHAR(100), txpt.total_worker_time/1000000 % 1000) + 'ms'
-	+ ':' + LEFT(CONVERT(VARCHAR(100),  txpt.total_worker_time%1000000), 2) + 'ns'
+	+ ':' + CONVERT(VARCHAR(100), txpt.total_worker_time/1000%1000) + 'ms'
+	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.total_worker_time%1000), 3) + 'ns'
 	AS TotalCPUWirkerTime,
 
 	CONVERT(VARCHAR(100), FLOOR(txpt.last_worker_time/1000000.0/60/60/24)) + 'd'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.last_worker_time/1000000.0/60/60%24)) + 'h'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.last_worker_time/1000000.0/60%60)) + 'm'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.last_worker_time/1000000.0%60)) + 's'
-	+ ':' + CONVERT(VARCHAR(100), txpt.last_worker_time/1000000 % 1000) + 'ms'
-	+ ':' + LEFT(CONVERT(VARCHAR(100),  txpt.last_worker_time%1000000), 2) + 'ns'
+	+ ':' + CONVERT(VARCHAR(100), txpt.last_worker_time/1000%1000) + 'ms'
+	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.last_worker_time%1000), 3) + 'ns'
 	AS LastCPUWirkerTime,
 
 	CONVERT(VARCHAR(100), FLOOR(txpt.min_worker_time/1000000.0/60/60/24)) + 'd'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.min_worker_time/1000000.0/60/60%24)) + 'h'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.min_worker_time/1000000.0/60%60)) + 'm'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.min_worker_time/1000000.0%60)) + 's'
-	+ ':' + CONVERT(VARCHAR(100), txpt.min_worker_time/1000000 % 1000) + 'ms'
-	+ ':' + LEFT(CONVERT(VARCHAR(100),  txpt.min_worker_time%1000000), 2) + 'ns'
+	+ ':' + CONVERT(VARCHAR(100), txpt.min_worker_time/1000%1000) + 'ms'
+	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.min_worker_time%1000), 3) + 'ns'
 	AS MinCPUWirkerTime,
 
 	CONVERT(VARCHAR(100), FLOOR(txpt.max_worker_time/1000000.0/60/60/24)) + 'd'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.max_worker_time/1000000.0/60/60%24)) + 'h'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.max_worker_time/1000000.0/60%60)) + 'm'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.max_worker_time/1000000.0%60)) + 's'
-	+ ':' + CONVERT(VARCHAR(100), txpt.max_worker_time/1000000 % 1000) + 'ms'
-	+ ':' + LEFT(CONVERT(VARCHAR(100),  txpt.max_worker_time%1000000), 2) + 'ns'
+	+ ':' + CONVERT(VARCHAR(100), txpt.max_worker_time/1000%1000) + 'ms'
+	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.max_worker_time%1000), 3) + 'ns'
 	AS MaxCPUWirkerTime,
 
 	sqlText.number AS NumberedStoredProcedure,

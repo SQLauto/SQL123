@@ -7,15 +7,13 @@
 --7. Sort order for results: N'asc' = ascending, N'desc' = descending
 
 DECLARE @instanceName NVARCHAR(4000) = NULL,
-@archiveID INT = NULL,
+@archiveID INT = 0,
+@typeOfLogs INT = 1, /* 1 = error log, 2 = SQL Agent log */
 @filter1Text NVARCHAR(4000) = NULL,
 @filter2Text NVARCHAR(4000) = NULL,
-@firstEntry DATETIME = GETDATE() - 1,
+@firstEntry DATETIME = NULL,
 @sortOrder NVARCHAR(4000) = N'desc',
 @lastEntry DATETIME = NULL;
-EXEC xp_readerrorlog @archiveID, 1, @filter1Text, @filter2Text, @firstEntry, @lastEntry, @sortOrder, @instanceName 
+EXEC xp_readerrorlog @archiveID, @typeOfLogs, @filter1Text, @filter2Text, @firstEntry, @lastEntry, @sortOrder, @instanceName 
 
-  DECLARE @A VARCHAR(20), @B VARCHAR(20)
-  SELECT @A = CONVERT(VARCHAR(20),GETDATE()-1,113);
-  SELECT @B = CONVERT(VARCHAR(20),GETDATE(),113);
-    
+  
