@@ -403,6 +403,20 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 	txpt.statement_start_offset AS StatementStartOffset,
 	txpt.statement_end_offset AS StatementEndOffset,
 	txpt.text AS SqlText,
+	SUBSTRING
+	(
+		txpt.text, 
+		(txpt.statement_start_offset/2)+1, 
+		(
+			(
+				CASE txpt.statement_end_offset  
+					WHEN -1 THEN DATALENGTH(txpt.text)  
+					ELSE txpt.statement_end_offset  
+				END - txpt.statement_start_offset
+			)/2
+		) + 1
+	) 
+	AS SQLStatementText,
 	txpt.plan_handle AS PlanHandle
 	FROM #TempExectionPlanTable txpt
 	OUTER APPLY sys.dm_exec_sql_text(txpt.plan_handle) sqlText
