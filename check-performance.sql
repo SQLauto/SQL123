@@ -20,6 +20,29 @@ IF SERVERPROPERTY('Edition') = 'SQL Azure' BEGIN
     ORDER BY end_time DESC
 END
 
+SELECT
+CONVERT(VARCHAR(100), FLOOR(PageLife_S/3600)) + 'h'
++ ':' + CONVERT(VARCHAR(100), FLOOR(PageLife_S%3600/60)) + 'm'
++ ':' + CONVERT(VARCHAR(100), FLOOR(PageLife_S%60)) + 's'
+AS PageLifeExpectancy,
+FORMAT(dp.DatabasePages, N'N0') AS BufferPoolPages, 
+FORMAT(CONVERT(DECIMAL(15,3), dp.DatabasePages*0.0078125), N'N0') AS BufferPoolMB,
+CONVERT(DECIMAL(15,3), dp.DatabasePages*0.0078125/PageLife_S) AS BufferPoolMiBs
+FROM
+( 
+	SELECT instance_name AS node,cntr_value AS PageLife_S
+	FROM sys.dm_os_performance_counters
+	WHERE counter_name = 'Page life expectancy'
+	AND object_name LIKE '%Manager%'
+) ple
+INNER JOIN
+(
+	SELECT instance_name AS node, cntr_value AS DatabasePages
+	FROM sys.dm_os_performance_counters
+	WHERE counter_name = 'Database pages'
+	AND object_name LIKE '%Manager%'
+) dp ON ple.node = dp.node
+
 SELECT DISTINCT
 DB_NAME() AS DatabaseName, 
 r.blocking_session_id AS BlockerSessionId,
