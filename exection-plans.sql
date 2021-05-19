@@ -21,8 +21,11 @@ DECLARE @howManyRows INT = 50;
 /* All types are: 'UsrTab;Prepared;View;Adhoc;Trigger;Proc' */
 DECLARE @objectTypes NVARCHAR(MAX) = 'UsrTab;Prepared;View;Adhoc;Trigger;Proc';
 
+/* This allow me to get the query plan id. */
+DECLARE @showPlanIds BIT = 0;
+
 -- Order Bys
-DECLARE @last_logical_reads BIT = 0;
+DECLARE @last_logical_reads BIT = 1;
 DECLARE @avg_logical_reads BIT = 0;
 DECLARE @lastCPU BIT = 0;
 DECLARE @avgCPU BIT = 0;
@@ -33,7 +36,7 @@ DECLARE @avgSpills BIT = 0;
 DECLARE @lastDuration BIT = 0;
 DECLARE @avgDuration BIT = 0;
 DECLARE @exectionCount BIT = 0;
-DECLARE @showPlanIds BIT = 0;
+
 
 DECLARE @excutedInPastMinutes INT = NULL;
 	
@@ -288,7 +291,7 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.max_elapsed_time/1000000.0%60)) + 's'
 	+ ':' + CONVERT(VARCHAR(100), txpt.max_elapsed_time/1000%1000) + 'ms'
 	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.max_elapsed_time%1000), 3) + 'ns'
-	AS MaDuration,
+	AS MaxDuration,
 
 	FORMAT(txpt.size_in_bytes, N'N0') AS SizeInBytes,
     

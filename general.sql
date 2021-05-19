@@ -2,6 +2,7 @@
 -- select * from sys.messages
 -- select * from sys.sql_modules
 
+select * from sys.dm_os_sys_info
 SELECT 
 Name AS DatabaseName, 
 compatibility_level AS CompatibilityLevel, 
