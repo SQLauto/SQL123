@@ -26,6 +26,7 @@ BEGIN
 	EXEC sp_configure 'backup checksum default';
 	EXEC sp_configure 'backup compression default';
 	EXEC sp_configure 'max server memory (MB)'
+	EXEC sp_configure 'optimize for ad hoc workloads'
 	SELECT FORMAT(physical_memory_kb/1024, N'N0') + 'mb' AS MachinePhysicalMemory FROM sys.dm_os_sys_info
 	SELECT  FORMAT(cntr_value/1024, N'N0') + 'mb' AS 'MaxMemory' FROM sys.dm_os_performance_counters WHERE counter_name LIKE '%Target Server%';
 	SELECT FORMAT(cntr_value/1024, N'N0') + 'mb' AS 'CurrentUsedMemory'  FROM sys.dm_os_performance_counters WHERE counter_name LIKE '%Total Server%';

@@ -9,7 +9,7 @@
 -- DBCC FREEPROCCACHE WITH NO_INFOMSGS; -- Flush the plan cache for the entire instance and suppress the regular completion message
 -- DBCC FREEPROCCACHE (<plan handle>);
 
-DECLARE @queryLike NVARCHAR(MAX) = NULL;
+DECLARE @queryLike NVARCHAR(MAX) =  NULL;
 DECLARE @queryLikeEscapeKey NCHAR(1) = '\';
 -- Gets current databse
 DECLARE @databaseName NVARCHAR(MAX) = DB_NAME();
@@ -18,6 +18,9 @@ DECLARE @lastExecutedDateTime DATETIME2 = NULL;
 DECLARE @viewExectionPlans BIT = 1; 
 DECLARE @viewHowManyOfObjectTypes BIT = 1;
 DECLARE @howManyRows INT = 50;
+
+/** To show the plan handle to remove it. */
+DECLARE @showPlanHandle BIT = 0;
 /* All types are: 'UsrTab;Prepared;View;Adhoc;Trigger;Proc' */
 DECLARE @objectTypes NVARCHAR(MAX) = 'UsrTab;Prepared;View;Adhoc;Trigger;Proc';
 
@@ -25,12 +28,12 @@ DECLARE @objectTypes NVARCHAR(MAX) = 'UsrTab;Prepared;View;Adhoc;Trigger;Proc';
 DECLARE @showPlanIds BIT = 0;
 
 -- Order Bys
-DECLARE @last_logical_reads BIT = 1;
-DECLARE @avg_logical_reads BIT = 0;
+DECLARE @last_logical_reads BIT = 0;
+DECLARE @avg_logical_reads BIT = 1;
 DECLARE @lastCPU BIT = 0;
 DECLARE @avgCPU BIT = 0;
 DECLARE @lastMemoryGrant BIT = 0;
-DECLARE @avgMemoryGrant BIT = 1;
+DECLARE @avgMemoryGrant BIT = 0;
 DECLARE @lastSpills BIT = 0;
 DECLARE @avgSpills BIT = 0;
 DECLARE @lastDuration BIT = 0;
@@ -114,8 +117,15 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 		cp.refcounts, 
 		qs.statement_start_offset,
 		qs.statement_end_offset,
-		cp.plan_handle,
-		sqlText.Text
+		sqlText.objectid,
+		sqlText.dbid,
+		sqlText.number,
+		sqlText.Text,
+		cp.bucketid,
+		qs.query_hash,
+		qs.query_plan_hash,
+		IIF(ISNULL(@showPlanHandle, 0) = 1, cp.plan_handle, NULL) AS plan_handle,
+		IIF(ISNULL(@showPlanHandle, 0) = 1, cp.parent_plan_handle, NULL) AS parent_plan_handle
 		FROM sys.dm_exec_cached_plans cp
 		OUTER APPLY sys.dm_exec_sql_text(cp.plan_handle) sqlText
 		LEFT JOIN sys.dm_exec_query_stats qs ON cp.plan_handle = qs.plan_handle
@@ -210,8 +220,15 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 		cp.refcounts, 
 		0 AS statement_start_offset,
 		0 AS statement_end_offset,
-		cp.plan_handle,
-		sqlText.Text
+		sqlText.objectid,
+		sqlText.dbid,
+		sqlText.number,
+		sqlText.Text,
+		cp.bucketid,	
+		NULL query_hash,
+		NULL query_plan_hash,
+		IIF(ISNULL(@showPlanHandle, 0) = 1, cp.plan_handle, NULL) AS plan_handle,
+		IIF(ISNULL(@showPlanHandle, 0) = 1, cp.parent_plan_handle, NULL) AS parent_plan_handle
 		FROM sys.dm_exec_cached_plans cp
 		OUTER APPLY sys.dm_exec_sql_text(cp.plan_handle) sqlText
 		LEFT JOIN sys.dm_exec_procedure_stats qs ON cp.plan_handle = qs.plan_handle
@@ -242,15 +259,17 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 	SELECT TOP(ISNULL(@howManyRows, 10))
 	txpt.StatType,
 	txpt.type_desc AS TypeDesc,
-	DB_NAME(sqlText.dbid) DatabaseName,
+	DB_NAME(txpt.dbid) DatabaseName,
 	FORMAT(execution_count, N'N0') AS ExecutionCount,
-	OBJECT_NAME(sqlText.objectid) AS ObjectName,
+	OBJECT_NAME(txpt.objectid) AS ObjectName,
+	txpt.objectid AS ObjectId,
     txpt.plan_id AS QueryStorePlanId,
 	txpt.plan_generation_num AS GenerationNumber,	
     txpt.creation_time AS CompiledDateTime,
     txpt.last_execution_time AS LastExecutionDateTime,
     txpt.cacheobjtype AS CacheObjectType, 
     txpt.objtype As ObjectType, 
+	txpt.bucketid AS BucketId,
 
 	txpt.total_elapsed_time,
 	CONVERT(VARCHAR(100), FLOOR(txpt.total_elapsed_time/txpt.execution_count/1000000.0/60/60/24)) + 'd'
@@ -401,10 +420,10 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.max_worker_time%1000), 3) + 'ns'
 	AS MaxCPUWirkerTime,
 
-	sqlText.number AS NumberedStoredProcedure,
+	txpt.number AS NumberedStoredProcedure,
     txpt.usecounts As NumberOfTimesCacheObjectLookedUp,
     txpt.refcounts AS NumberOfCacheObjectsReferencingThisCacheObject, 
-	LEN(sqlText.text) QueryLength,
+	LEN(txpt.text) QueryLength,
 	txpt.statement_start_offset AS StatementStartOffset,
 	txpt.statement_end_offset AS StatementEndOffset,
 	txpt.text AS SqlText,
@@ -422,9 +441,12 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 		) + 1
 	) 
 	AS SQLStatementText,
-	txpt.plan_handle AS PlanHandle
+	txpt.query_hash AS QueryHash,
+	txpt.query_plan_hash AS QueryPlanHash,
+	txpt.plan_handle AS PlanHandle,
+	txpt.parent_plan_handle AS ParentHandle
 	FROM #TempExectionPlanTable txpt
-	OUTER APPLY sys.dm_exec_sql_text(txpt.plan_handle) sqlText
+	-- OUTER APPLY sys.dm_exec_sql_text(txpt.plan_handle) sqlText
 	ORDER BY
 
 	CASE WHEN ISNULL(@last_logical_reads, 0) = 1 THEN txpt.last_logical_reads END DESC,

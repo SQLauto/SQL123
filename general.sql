@@ -1,6 +1,7 @@
 -- SELECT * FROM sys.database_scoped_configurations
 -- select * from sys.messages
 -- select * from sys.sql_modules
+select * from sys.syscacheobject
 
 select * from sys.dm_os_sys_info
 SELECT 
@@ -11,6 +12,10 @@ FROM sys.databases
 
 SELECT database_id, create_date, snapshot_isolation_state, snapshot_isolation_state_desc, is_read_committed_snapshot_on,MAXDOP, *
 FROM SYS.databases
+
+-- https://docs.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-plan-attributes-transact-sql?view=sql-server-ver15
+select * from sys.dm_exec_plan_attributes(0x060008008370CC1E201E6E853102000001000000000000000000000000000000000000000000000000000000)
+select*  from sys.dm_exec_plan_attributes(0x060008008370CC1E70E1E3833102000001000000000000000000000000000000000000000000000000000000)
 
 -- Make sure all users are off the database.
 -- https://docs.microsoft.com/en-us/troubleshoot/sql/analysis-services/enable-snapshot-transaction-isolation-level
