@@ -4,13 +4,21 @@
 -- Row Estimates: https://dba.stackexchange.com/questions/186193/statistics-and-row-estimation
 -- Selectivity : https://www.programmerinterview.com/database-sql/selectivity-in-sql-databases/
 DECLARE @schemaName NVARCHAR(MAX) = NULL;
-DECLARE @tableName NVARCHAR(MAX) = NULL;
+DECLARE @tableName NVARCHAR(MAX) = 'DeliveryItem';
 DECLARE @statName NVARCHAR(MAX) = NULL;
 DECLARE @orderByModification BIT = 0;
 DECLARE @thresholdSqrtPercent BIT = 1;
 DECLARE @threshold20Percent BIT = 0;
 
+-- Statistics
 -- AVG_RANGE_ROWS = RANGE_ROWS/DISTINCT_RANGE_ROWS
+
+-- column = @variable: When doing an equal with a variable, the value of the variable is not known.
+-- All density * Rows on the Statistics 
+
+-- column < @variable: When doing an equal with a variable, the value of the variable is not known.
+-- 30% * Rows on the Statistics 
+
 -- DBCC SHOW_STATISTICS('MyTable', MyStatisticsName);
 -- Put OPTION(QUERYTRACEON 3604, QUERYTRACEON 2363) at and end of a query to find out why statistics are being used. Will give you the selectivity for the statistic and the calculation being performed and the stat id it used.
 -- ALTER DATABASE <DatabaseName/CURRENT> SET AUTO_CREATE_STATISTICS (ON|OFF);
@@ -57,7 +65,32 @@ CAST(FORMAT(FLOOR(sp.modification_counter/(SQRT(sp.rows*1000)) * 100), 'N0') AS 
 sp.persisted_sample_percent AS 'PersistedSample %',
 FORMAT(sp.rows_sampled, N'N0') AS RowsSampled, 
 FORMAT(((sp.rows_sampled * 100)/sp.rows), 'N0') + '%' AS 'Sample %',
-sp.steps StatsSteps
+sp.steps AS StatsSteps,
+s.user_created AS IsUserCreated,
+s.auto_created AS IsAutoCreated,
+s.auto_drop AS IsAutoDrop,
+s.filter_definition AS FilterDefinition,
+s.has_persisted_sample AS PersistedSample,
+s.is_incremental AS IsIncremental,
+s.is_temporary As IsTemporary,
+s.no_recompute AS NoRecompile,
+s.stats_generation_method_desc AS StatsGenerationMethodDesc,
+c.max_length AS MaxLength,
+c.is_ansi_padded AS AnsiPadded,
+c.is_column_set AS IsColumnSet,
+c.is_data_deletion_filter_column AS DataDeletionFilter_Column,
+c.is_dts_replicated AS IsDtsReplicated,
+c.is_filestream AS IsFileStream,
+c.is_hidden AS IsHidden,
+c.is_identity AS IsIdentity,
+c.is_masked AS IsMasked,
+c.is_merge_published AS IsMergePublished,
+c.is_non_sql_subscribed AS IsNonSqlSubscribed,
+c.is_nullable AS IsNullable,
+c.is_replicated AS IsReplicated,
+c.is_rowguidcol AS IsRowGuidCol,
+c.is_sparse AS Sparse,
+c.is_xml_document AS IsXmlDocument
 FROM sys.stats s
 INNER JOIN sys.stats_columns sc ON s.stats_id = sc.stats_id AND s.object_id = sc.object_id
 INNER JOIN sys.columns c ON sc.column_id = c.column_id AND c.object_id = sc.object_id
