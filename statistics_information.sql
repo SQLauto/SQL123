@@ -4,7 +4,7 @@
 -- Row Estimates: https://dba.stackexchange.com/questions/186193/statistics-and-row-estimation
 -- Selectivity : https://www.programmerinterview.com/database-sql/selectivity-in-sql-databases/
 DECLARE @schemaName NVARCHAR(MAX) = NULL;
-DECLARE @tableName NVARCHAR(MAX) = 'DeliveryItem';
+DECLARE @tableName NVARCHAR(MAX) = NULL;
 DECLARE @statName NVARCHAR(MAX) = NULL;
 DECLARE @orderByModification BIT = 0;
 DECLARE @thresholdSqrtPercent BIT = 1;
