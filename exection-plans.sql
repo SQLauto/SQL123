@@ -9,7 +9,7 @@
 -- DBCC FREEPROCCACHE WITH NO_INFOMSGS; -- Flush the plan cache for the entire instance and suppress the regular completion message
 -- DBCC FREEPROCCACHE (<plan handle>);
 
-DECLARE @queryLike NVARCHAR(MAX) =  NULL;
+DECLARE @queryLike NVARCHAR(MAX) =  'UPDATE \[Delivery\] SET \[DeliveredDateTime\] = ';
 DECLARE @queryLikeEscapeKey NCHAR(1) = '\';
 -- Gets current databse
 DECLARE @databaseName NVARCHAR(MAX) = DB_NAME();
@@ -19,10 +19,14 @@ DECLARE @viewExectionPlans BIT = 1;
 DECLARE @viewHowManyOfObjectTypes BIT = 1;
 DECLARE @howManyRows INT = 50;
 
-/** To show the plan handle to remove it. */
-DECLARE @showPlanHandle BIT = 0;
+/* Only get queries that are part of the same execution plan. This must not be a string but hex format */
+DECLARE @queryOnPlan NVARCHAR(MAX) = NULL;
+
+/* Show the XML Execution Plan */
+DECLARE @showExecutionPlan BIT = 0;
+
 /* All types are: 'UsrTab;Prepared;View;Adhoc;Trigger;Proc' */
-DECLARE @objectTypes NVARCHAR(MAX) = 'UsrTab;Prepared;View;Adhoc;Trigger;Proc';
+DECLARE @objectTypes NVARCHAR(MAX) = 'Prepared';
 
 /* This allow me to get the query plan id. */
 DECLARE @showPlanIds BIT = 0;
@@ -124,8 +128,8 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 		cp.bucketid,
 		qs.query_hash,
 		qs.query_plan_hash,
-		IIF(ISNULL(@showPlanHandle, 0) = 1, cp.plan_handle, NULL) AS plan_handle,
-		IIF(ISNULL(@showPlanHandle, 0) = 1, cp.parent_plan_handle, NULL) AS parent_plan_handle
+		cp.plan_handle,
+		cp.parent_plan_handle
 		FROM sys.dm_exec_cached_plans cp
 		OUTER APPLY sys.dm_exec_sql_text(cp.plan_handle) sqlText
 		LEFT JOIN sys.dm_exec_query_stats qs ON cp.plan_handle = qs.plan_handle
@@ -227,8 +231,8 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 		cp.bucketid,	
 		NULL query_hash,
 		NULL query_plan_hash,
-		IIF(ISNULL(@showPlanHandle, 0) = 1, cp.plan_handle, NULL) AS plan_handle,
-		IIF(ISNULL(@showPlanHandle, 0) = 1, cp.parent_plan_handle, NULL) AS parent_plan_handle
+		cp.plan_handle,
+		cp.parent_plan_handle
 		FROM sys.dm_exec_cached_plans cp
 		OUTER APPLY sys.dm_exec_sql_text(cp.plan_handle) sqlText
 		LEFT JOIN sys.dm_exec_procedure_stats qs ON cp.plan_handle = qs.plan_handle
@@ -254,7 +258,7 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 			OR @databaseName IS NULL
 		)
 		AND (@excutedInPastMinutes IS NULL OR qs.last_execution_time > DATEADD(minute, -@excutedInPastMinutes, GETDATE()))
-	) StatisticsTable;
+	) StatisticsTable	
 	
 	SELECT TOP(ISNULL(@howManyRows, 10))
 	txpt.StatType,
@@ -443,10 +447,13 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 	AS SQLStatementText,
 	txpt.query_hash AS QueryHash,
 	txpt.query_plan_hash AS QueryPlanHash,
+	qp.query_plan AS ExecutionPlanInXml,
 	txpt.plan_handle AS PlanHandle,
 	txpt.parent_plan_handle AS ParentHandle
 	FROM #TempExectionPlanTable txpt
+	OUTER APPLY sys.dm_exec_query_plan(IIF(ISNULL(@showExecutionPlan, 0) = 0, NULL, txpt.plan_handle)) AS qp
 	-- OUTER APPLY sys.dm_exec_sql_text(txpt.plan_handle) sqlText
+	WHERE (txpt.plan_handle = @queryOnPlan OR @queryOnPlan IS NULL)
 	ORDER BY
 
 	CASE WHEN ISNULL(@last_logical_reads, 0) = 1 THEN txpt.last_logical_reads END DESC,

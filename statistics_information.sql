@@ -4,7 +4,7 @@
 -- Row Estimates: https://dba.stackexchange.com/questions/186193/statistics-and-row-estimation
 -- Selectivity : https://www.programmerinterview.com/database-sql/selectivity-in-sql-databases/
 DECLARE @schemaName NVARCHAR(MAX) = NULL;
-DECLARE @tableName NVARCHAR(MAX) = 'DeliveryItem';
+DECLARE @tableName NVARCHAR(MAX) = NULL;
 DECLARE @statName NVARCHAR(MAX) = NULL;
 DECLARE @orderByModification BIT = 0;
 DECLARE @thresholdSqrtPercent BIT = 1;
@@ -68,7 +68,6 @@ FORMAT(((sp.rows_sampled * 100)/sp.rows), 'N0') + '%' AS 'Sample %',
 sp.steps AS StatsSteps,
 s.user_created AS IsUserCreated,
 s.auto_created AS IsAutoCreated,
-s.auto_drop AS IsAutoDrop,
 s.filter_definition AS FilterDefinition,
 s.has_persisted_sample AS PersistedSample,
 s.is_incremental AS IsIncremental,
@@ -78,7 +77,6 @@ s.stats_generation_method_desc AS StatsGenerationMethodDesc,
 c.max_length AS MaxLength,
 c.is_ansi_padded AS AnsiPadded,
 c.is_column_set AS IsColumnSet,
-c.is_data_deletion_filter_column AS DataDeletionFilter_Column,
 c.is_dts_replicated AS IsDtsReplicated,
 c.is_filestream AS IsFileStream,
 c.is_hidden AS IsHidden,

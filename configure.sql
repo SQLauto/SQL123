@@ -3,7 +3,7 @@ DECLARE @updateConfig BIT = 0;
 
 DECLARE @updateCostThresholdForParallelism BIT = 0;
 -- This will remove all execution plans.
-DECLARE @costThresholdForParallelism INT = 50;s
+DECLARE @costThresholdForParallelism INT = 50;
 
 -- If you get an error, run the lines above first 
 -- Minimum should be between 4 and 8
@@ -30,6 +30,19 @@ BEGIN
 	SELECT FORMAT(physical_memory_kb/1024, N'N0') + 'mb' AS MachinePhysicalMemory FROM sys.dm_os_sys_info
 	SELECT  FORMAT(cntr_value/1024, N'N0') + 'mb' AS 'MaxMemory' FROM sys.dm_os_performance_counters WHERE counter_name LIKE '%Target Server%';
 	SELECT FORMAT(cntr_value/1024, N'N0') + 'mb' AS 'CurrentUsedMemory'  FROM sys.dm_os_performance_counters WHERE counter_name LIKE '%Total Server%';
+	SELECT * 
+	FROM sys.database_scoped_configurations 
+	WHERE name IN
+	(
+		'IDENTITY_CACHE',
+		'MAXDOP',
+		'PARAMETER_SNIFFING',
+		'TSQL_SCALAR_UDF_INLINING',
+		'LAST_QUERY_PLAN_STATS',
+		'ROW_MODE_MEMORY_GRANT_FEEDBACK',
+		'BATCH_MODE_ADAPTIVE_JOINS'
+	);
+	-- ALTER DATABASE SCOPED CONFIGURATION SET <parameter> = ON;
 END
 
 IF ISNULL(@updateConfig, 0) = 1
