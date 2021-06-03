@@ -144,86 +144,36 @@ IF ISNULL(@showIndexData, 0) = 1 BEGIN
     OUTER APPLY
     (
         SELECT
-        SUBSTRING(
+        SUBSTRING
         (
-            SELECT ', ' + c.name AS [text()]
-            FROM sys.index_columns ic
+            (
+                SELECT ', ' + c.name AS [text()]
+                FROM sys.index_columns ic
                 INNER JOIN sys.columns c ON c.column_id = ic.column_id AND c.object_id = ic.object_id
-            WHERE ic.is_included_column = 0
+                WHERE ic.is_included_column = 0
                 AND ic.object_id = i.object_id
                 AND i.index_id = ic.index_id
-            FOR XML PATH ('')
-        ), 3, 1000) AS Columns,
-            SUBSTRING(
-        (
-        SELECT ', ' + c.name AS [text()]
-                FROM sys.index_columns ic
-                    INNER JOIN sys.columns c ON c.column_id = ic.column_id AND c.object_id = ic.object_id
-                WHERE ic.is_included_column = 1
-                    AND ic.object_id = i.object_id
-                    AND i.index_id = ic.index_id
                 FOR XML PATH ('')
-        ), 3, 1000) AS IncludeColumns
+            ), 3, 1000
+        ) AS Columns,
+        SUBSTRING
+        (
+            (
+                SELECT ', ' + c.name AS [text()]
+                FROM sys.index_columns ic
+                INNER JOIN sys.columns c ON c.column_id = ic.column_id AND c.object_id = ic.object_id
+                WHERE ic.is_included_column = 1
+                AND ic.object_id = i.object_id
+                AND i.index_id = ic.index_id
+                FOR XML PATH ('')
+            ), 3, 1000
+        ) AS IncludeColumns
     ) oa_columns
     WHERE (o.name = @tableName OR @tableName IS NULL)
     AND (i.name = @indexName OR @indexName IS NULL)
     AND (i.index_id = @indexId OR @indexId IS NULL)
     AND (OBJECT_SCHEMA_NAME(o.object_id) = @schemaName OR @schemaName IS NULL)
-    AND OBJECT_SCHEMA_NAME(o.object_id) != 'sys'
-    GROUP BY o.object_id, o.name, i.name, i.type_desc, ius.user_seeks,
-    o.create_date, o.modify_date,
-    ius.user_seeks,ius.last_user_seek,
-    ius.user_scans, ius.last_user_scan,
-    ius.user_lookups, ius.last_user_lookup,
-    ius.user_updates, ius.last_user_update,
-    ius.system_seeks, ius.last_system_seek,
-    ius.system_scans, ius.last_system_scan,
-    ius.system_lookups, ius.last_system_lookup,
-    ius.system_updates, ius.last_system_update,
-    ios.nonleaf_allocation_count, ios.nonleaf_insert_count,
-    ios.nonleaf_delete_count, ios.nonleaf_update_count,
-    ios.leaf_allocation_count, ios.leaf_insert_count,
-    ios.leaf_delete_count, ios.leaf_update_count,
-    ios.row_lock_count,ios.row_lock_wait_count, ios.row_lock_wait_in_ms,
-    page_lock_count, page_lock_wait_count, page_lock_wait_in_ms,
-    ios.index_lock_promotion_attempt_count,
-    ios.index_lock_promotion_count,
-    ios.page_latch_wait_count,
-    ios.page_latch_wait_in_ms,
-    ios.page_io_latch_wait_count,
-    ios.page_io_latch_wait_in_ms,
-    ios.tree_page_latch_wait_count,
-    ios.tree_page_latch_wait_in_ms,
-    ios.tree_page_io_latch_wait_count,
-    ios.tree_page_io_latch_wait_in_ms,
-    ios.page_compression_attempt_count,
-    ios.page_compression_success_count,
-    i.has_filter,
-    i.is_disabled,
-    i.ignore_dup_key,
-    i.is_primary_key,
-    i.is_unique,
-    i.is_unique_constraint,
-    i.auto_created,
-    i.allow_row_locks,
-    oa_columns.Columns,
-    oa_columns.IncludeColumns,
-    i.object_id,
-    i.index_id,
-    i.filter_definition,
-    oa_index_size.used_pages,
-    oa_index_size.reserved_pages,
-    oa_index_size.ReservedMB,
-    oa_index_size.TotalUsedMB,
-    oa_index_size.TotalDataMB,
-    oa_index_size.UnusedMB,
-    oa_index_size.IndexSizeKB,
-    oa_index_size.RowCountTotal,
-    sp.modification_counter,
-    sp.persisted_sample_percent,
-    sp.rows,
-    sp.rows_sampled,
-    sp.steps;
+    AND OBJECT_SCHEMA_NAME(o.object_id) != 'sys';
 
     IF ISNULL(@unusedIndexes, 1) = 1 BEGIN
         SELECT IndexId, SchemaName, TableName, IndexName, IndexType, ObjectId, DaysOld,
