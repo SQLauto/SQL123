@@ -9,7 +9,7 @@
 -- DBCC FREEPROCCACHE WITH NO_INFOMSGS; -- Flush the plan cache for the entire instance and suppress the regular completion message
 -- DBCC FREEPROCCACHE (<plan handle>);
 
-DECLARE @queryLike NVARCHAR(MAX) =  'UPDATE \[Delivery\] SET \[DeliveredDateTime\] = ';
+DECLARE @queryLike NVARCHAR(MAX) = NULL;
 DECLARE @queryLikeEscapeKey NCHAR(1) = '\';
 -- Gets current databse
 DECLARE @databaseName NVARCHAR(MAX) = DB_NAME();
@@ -17,7 +17,7 @@ DECLARE @queryPlanLike NVARCHAR(MAX) = NULL;
 DECLARE @lastExecutedDateTime DATETIME2 = NULL;
 DECLARE @viewExectionPlans BIT = 1; 
 DECLARE @viewHowManyOfObjectTypes BIT = 1;
-DECLARE @howManyRows INT = 50;
+DECLARE @howManyRows INT = 10;
 
 /* Only get queries that are part of the same execution plan. This must not be a string but hex format */
 DECLARE @queryOnPlan NVARCHAR(MAX) = NULL;
@@ -26,7 +26,7 @@ DECLARE @queryOnPlan NVARCHAR(MAX) = NULL;
 DECLARE @showExecutionPlan BIT = 0;
 
 /* All types are: 'UsrTab;Prepared;View;Adhoc;Trigger;Proc' */
-DECLARE @objectTypes NVARCHAR(MAX) = 'Prepared';
+DECLARE @objectTypes NVARCHAR(MAX) = 'UsrTab;Prepared;View;Adhoc;Trigger;Proc';
 
 /* This allow me to get the query plan id. */
 DECLARE @showPlanIds BIT = 0;
@@ -275,7 +275,7 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
     txpt.objtype As ObjectType, 
 	txpt.bucketid AS BucketId,
 
-	txpt.total_elapsed_time,
+	FORMAT(txpt.total_elapsed_time, N'N0') AS TotalElapsedTimeInMS,
 	CONVERT(VARCHAR(100), FLOOR(txpt.total_elapsed_time/txpt.execution_count/1000000.0/60/60/24)) + 'd'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.total_elapsed_time/txpt.execution_count/1000000.0/60/60%24)) + 'h'
 	+ ':' + CONVERT(VARCHAR(100), FLOOR(txpt.total_elapsed_time/txpt.execution_count/1000000.0/60%60)) + 'm'
