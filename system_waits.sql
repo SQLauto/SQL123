@@ -62,7 +62,7 @@ TRIM(CAST(CAST(wait_time_ms * 100.0/SUM(wait_time_ms) OVER() AS DECIMAL(10,2)) A
 FROM sys.dm_os_wait_stats
 CROSS APPLY 
 (
-	SELECT DATEADD(ms, AVG(-ws.wait_time_ms), GETDATE()) AS approximate_restart_date
+	SELECT DATEADD(s, AVG(-(ws.wait_time_ms/1000)), GETDATE()) AS approximate_restart_date
 	FROM sys.dm_os_wait_stats ws
 	WHERE wait_type IN ('DIRTY_PAGE_POLL','HADR_FILESTREAM_IOMGR_IOCOMPLETION','LAZYWRITER_SLEEP','LOGMGR_QUEUE','REQUEST_FOR_DEADLOCK_SEARCH','XE_DISPATCHER_WAIT','XE_TIMER_EVENT')
 ) up_time
