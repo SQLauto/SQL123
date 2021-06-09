@@ -9,6 +9,9 @@
 -- DBCC FREEPROCCACHE WITH NO_INFOMSGS; -- Flush the plan cache for the entire instance and suppress the regular completion message
 -- DBCC FREEPROCCACHE (<plan handle>);
 
+-- TODO Find large differences between used, ideal and granted Memory Grants
+-- TODO Search exuction plans for keywords such as indexes.
+
 DECLARE @queryLike NVARCHAR(MAX) = NULL;
 DECLARE @queryLikeEscapeKey NCHAR(1) = '\';
 -- Gets current databse
@@ -424,10 +427,10 @@ IF ISNULL(@viewExectionPlans, 0) = 1 BEGIN
 	+ ':' + LEFT(CONVERT(VARCHAR(100), txpt.max_worker_time%1000), 3) + 'ns'
 	AS MaxCPUWirkerTime,
 
-	txpt.number AS NumberedStoredProcedure,
-    txpt.usecounts As NumberOfTimesCacheObjectLookedUp,
-    txpt.refcounts AS NumberOfCacheObjectsReferencingThisCacheObject, 
-	LEN(txpt.text) QueryLength,
+	FORMAT(txpt.number, N'N0') AS NumberedStoredProcedure,
+    FORMAT(txpt.usecounts, N'N0') As NumberOfTimesCacheObjectLookedUp,
+    FORMAT(txpt.refcounts, N'N0') AS NumberOfCacheObjectsReferencingThisCacheObject, 
+	FORMAT(LEN(txpt.text), N'N0') QueryLength,
 	txpt.statement_start_offset AS StatementStartOffset,
 	txpt.statement_end_offset AS StatementEndOffset,
 	txpt.text AS SqlText,
@@ -479,9 +482,9 @@ END
 
 IF ISNULL(@viewHowManyOfObjectTypes, 0) = 1 BEGIN
     SELECT objtype, 
-    COUNT(*) as NumberOfPlans,
-    SUM(CAST(size_in_bytes as bigint))/1024/1024 as SizeInMBs,
-    AVG(usecounts) as AvgNumberOfTimesCacheObjectLookedUp
+    FORMAT(COUNT(*), N'N0') as NumberOfPlans,
+    FORMAT(SUM(CAST(size_in_bytes as bigint))/1024/1024, N'N0') as SizeInMBs,
+    FORMAT(AVG(usecounts), N'N0') as AvgNumberOfTimesCacheObjectLookedUp
     FROM sys.dm_exec_cached_plans
     GROUP BY objtype
 END
