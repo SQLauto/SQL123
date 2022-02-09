@@ -27,10 +27,14 @@ IF ISNULL(@databaseName, '') != '' BEGIN
     '
     DECLARE TableCursor CURSOR 
     READ_ONLY FOR 
-    SELECT ''['' + table_catalog + ''].['' + table_schema + ''].['' +  
-    table_name + '']'' as tn
+    SELECT ''['' + table_catalog + ''].['' + table_schema + ''].['' + table_name + '']'' as tn
     FROM [' + @databaseTable + '].Information_Schema.Tables
-    WHERE table_type = ''BASE TABLE'';
+    WHERE table_type = ''BASE TABLE''
+    UNION
+    SELECT o.name AS tn
+    FROM sysobjects o
+    INNER JOIN sysindexes i ON o.id = i.id
+    WHERE o.xtype = ''V'';
     ';
     -- create table cursor  
     EXEC (@cmd);

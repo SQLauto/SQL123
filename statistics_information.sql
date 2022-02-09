@@ -3,11 +3,15 @@
 -- Cardinality Estimation: https://docs.microsoft.com/en-us/sql/relational-databases/performance/cardinality-estimation-sql-serve
 -- Row Estimates: https://dba.stackexchange.com/questions/186193/statistics-and-row-estimation
 -- Selectivity : https://www.programmerinterview.com/database-sql/selectivity-in-sql-databases/
+
+-- vsDbKubeClsDev: 6,810
+-- VirtueScriptStagingLoadTesting: 988,589, 987,002
+
 DECLARE @schemaName NVARCHAR(MAX) = NULL;
-DECLARE @tableName NVARCHAR(MAX) = NULL
+DECLARE @tableName NVARCHAR(MAX) = NULL;
 DECLARE @statName NVARCHAR(MAX) = NULL;
-DECLARE @orderByModification BIT = 0;
-DECLARE @orderByStatsLastUpdated BIT = 1;
+DECLARE @orderByModification BIT = 1;
+DECLARE @orderByStatsLastUpdated BIT = 0;
 DECLARE @orderByStatsRowsOnUpdate BIT = 0;
 DECLARE @orderByThresholdSqrtPercent BIT = 0;
 DECLARE @orderByThreshold20Percent BIT = 0;

@@ -1,3 +1,5 @@
+DBCC useroptions
+
 DECLARE @vieOnly BIT = 1;
 DECLARE @updateConfig BIT = 0;
 
