@@ -29,37 +29,3 @@ LEFT JOIN sys.all_columns ccc ON cc.parent_column_id = ccc.column_id AND cc.pare
 WHERE (@tableName IS NULL OR t.name = @tableName)
 AND (@constraintType IS NULL OR co.type = @constraintType)
 ORDER  BY t.name
-
--- select * from sys.check_constraints
--- select * from sys.columns where column_id = 18 and object_id =1973582069
--- select * from sys.default_constraints
--- select * from sys.objects where object_id = 623341285
--- select * from sys.all_columns
--- OUTER APPLY
---     (
---         SELECT
---         SUBSTRING
---         (
---             (
---                 SELECT ', ' + c.name AS [text()]
---                 FROM sys.index_columns ic
---                 INNER JOIN sys.columns c ON c.column_id = ic.column_id AND c.object_id = ic.object_id
---                 WHERE ic.is_included_column = 0
---                 AND ic.object_id = i.object_id
---                 AND i.index_id = ic.index_id
---                 FOR XML PATH ('')
---             ), 3, 1000
---         ) AS Columns,
---         SUBSTRING
---         (
---             (
---                 SELECT ', ' + c.name AS [text()]
---                 FROM sys.index_columns ic
---                 INNER JOIN sys.columns c ON c.column_id = ic.column_id AND c.object_id = ic.object_id
---                 WHERE ic.is_included_column = 1
---                 AND ic.object_id = i.object_id
---                 AND i.index_id = ic.index_id
---                 FOR XML PATH ('')
---             ), 3, 1000
---         ) AS IncludeColumns
---     ) oa_columns
