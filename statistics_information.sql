@@ -4,9 +4,6 @@
 -- Row Estimates: https://dba.stackexchange.com/questions/186193/statistics-and-row-estimation
 -- Selectivity : https://www.programmerinterview.com/database-sql/selectivity-in-sql-databases/
 
--- vsDbKubeClsDev: 6,810
--- VirtueScriptStagingLoadTesting: 988,589, 987,002
-
 DECLARE @schemaName NVARCHAR(MAX) = NULL;
 DECLARE @tableName NVARCHAR(MAX) = NULL;
 DECLARE @statName NVARCHAR(MAX) = NULL;
