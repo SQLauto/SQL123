@@ -19,14 +19,14 @@ BEGIN
     FROM sys.database_files df
     GROUP BY type_desc
     HAVING type_desc = 'ROWS'
-    SELECT * FROM sys.database_files df 
+    -- SELECT FILEPROPERTY('VirtueScript', 'MaxSizeInBytes'), * FROM sys.database_files df 
    END
 END
 ELSE BEGIN
     SELECT 
     d.Name AS DatabaseName,
     FORMAT(SUM(max_size/8/128.0), N'N0') AS AllocatedSizeInMB,
-    SUM(CAST(mf.size AS BIGINT))*8/1024 AS AllocatedSizeUnusedInMB,
+    FORMAT(SUM(CAST(mf.size AS BIGINT))*8/1024, N'N0') AS AllocatedSizeUnusedInMB,
     CAST(CAST(IIF(SUM(max_size) < 0, 0, SUM(CAST(mf.size AS BIGINT))*8/1024/SUM(max_size/8/128.0))*100 AS DECIMAL(10,2)) AS NVARCHAR(50)) + '%' AS PercentUsed
     FROM sys.master_files mf
     INNER JOIN sys.databases d ON d.database_id = mf.database_id
