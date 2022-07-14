@@ -17,7 +17,7 @@ IF SERVERPROPERTY('Edition') = 'SQL Azure' BEGIN
     max_worker_percent AS 'Max Worker %',
     max_session_percent AS 'Max Session %'
     FROM sys.dm_db_resource_stats
-    ORDER BY end_time DESC
+    ORDER BY end_time DESC;
 END
 
 SELECT
@@ -43,8 +43,46 @@ INNER JOIN
 	AND object_name LIKE '%Manager%'
 ) dp ON ple.node = dp.node
 
-SELECT DISTINCT
-DB_NAME() AS DatabaseName, 
+ 
+SELECT
+db.name AS DatabaseName,
+trans.session_id AS SessionId,
+es.status AS TrasationStatus,
+es.host_name AS HostName,
+login_name AS LoginName,
+trans.transaction_id AS TransactionId,
+tas.name AS TrasactionName,
+trans.open_transaction_count AS TransactionCount,
+tas.transaction_begin_time AS TransactionBeginTime,
+CAST(sdest.Query AS XML) XmlQuery
+FROM sys.dm_tran_active_transactions tas
+JOIN sys.dm_tran_session_transactions trans ON trans.transaction_id=tas.transaction_id
+LEFT OUTER JOIN sys.dm_tran_database_transactions tds ON tas.transaction_id = tds.transaction_id
+LEFT OUTER JOIN sys.databases AS db ON tds.database_id = db.database_id
+LEFT OUTER JOIN sys.dm_exec_sessions AS es ON trans.session_id = es.session_id
+JOIN sys.dm_exec_connections AS sdec ON sdec.session_id = es.session_id
+CROSS APPLY 
+(
+    SELECT DB_NAME(dbid) AS DatabaseName ,OBJECT_ID(objectid) AS ObjectName,
+           ISNULL
+           (
+               (
+                   SELECT TEXT AS [processing-instruction(definition)]
+                   FROM sys.dm_exec_sql_text(sdec.most_recent_sql_handle)
+                   FOR XML PATH(''), 
+                   TYPE
+                ), 
+                ''
+            ) AS Query
+    FROM sys.dm_exec_sql_text(sdec.most_recent_sql_handle)
+) sdest
+WHERE es.session_id IS NOT NULL;
+
+SELECT 
+DB_NAME() AS DatabaseName,
+o.name AS ObjectName,
+o.type_desc AS ObjectTypeDescription,
+tl.request_session_id AS SessionId,
 r.blocking_session_id AS BlockerSessionId,
 r.session_id AS SessionIdBlocked,
 CONVERT(VARCHAR(100), FLOOR(sp.waittime/1000.0/60/60/24)) + 'd'
@@ -59,6 +97,7 @@ tl.resource_subtype AS ResourceSubType,
 tl.request_type AS TransactionType,
 tl.request_status AS TransactionStatus,
 tl.resource_lock_partition AS ResourceLockPartition,
+tl.request_mode AS RequestMode,
 CASE
 	WHEN tl.request_mode = 'Sch-S' THEN 'Sch-S - Schema stability'
 	WHEN tl.request_mode = 'Sch-M' THEN 'Sch-M - Schema modification'
@@ -67,7 +106,7 @@ CASE
 	WHEN tl.request_mode = 'X' THEN 'X - Exclusive'
 	WHEN tl.request_mode = 'IS' THEN 'IS - Intent Shared'
 	WHEN tl.request_mode = 'IU' THEN 'IU - Intent Update'
-	WHEN tl.request_mode = 'IX' THEN 'IS - Intent Exclusive'
+	WHEN tl.request_mode = 'IX' THEN 'IX - Intent Exclusive'
 	WHEN tl.request_mode = 'SIU' THEN 'SIU - Shared Intent Update'
 	WHEN tl.request_mode = 'SIX' THEN 'SIX - Shared Intent Exclusive'
 	WHEN tl.request_mode = 'UIX' THEN 'UIX - Update Intent Exclusive'
@@ -82,27 +121,51 @@ CASE
 	WHEN tl.request_mode = 'RangeX_U' THEN 'RangeX_U - Key-Range Conversion lock, created by an overlap of RangeI_N and RangeS_U locks'
 	WHEN tl.request_mode = 'RangeX_X' THEN 'RangeX_X - Exclusive Key-Range and Exclusive Resource lock. This is a conversion lock used when updating a key in a range'
 	ELSE tl.request_mode + ' - Unknown'
-END AS TransactionMode,
+END AS RequestModeDescription,
 tl.request_owner_type AS OwnerType,
-tl.request_reference_count AS ReferenceCount
+tl.request_reference_count AS ReferenceCount,
+CAST(sdest.Query AS XML) XmlQuery
 FROM sys.dm_tran_locks tl
-JOIN sys.dm_exec_requests r ON tl.request_session_id = r.blocking_session_id
-JOIN sys.sysprocesses sp ON r.session_id = sp.spid
-CROSS APPLY
+JOIN sys.objects o ON tl.resource_associated_entity_id = o.object_id
+LEFT JOIN sys.dm_exec_requests r ON tl.request_session_id = r.blocking_session_id
+LEFT JOIN sys.sysprocesses sp ON r.session_id = sp.spid
+LEFT JOIN sys.dm_exec_connections AS sdec ON sdec.session_id = r.session_id
+OUTER APPLY
 (
 	SELECT COUNT(DISTINCT tl2.resource_associated_entity_id) AS ResourceLockTypeCount
 	FROM sys.dm_tran_locks tl2
-	JOIN sys.dm_exec_requests r2 ON tl2.request_session_id = r2.blocking_session_id
+	LEFT JOIN sys.dm_exec_requests r2 ON tl2.request_session_id = r2.blocking_session_id
 	WHERE tl2.resource_type = tl.resource_type
 	AND r2.blocking_session_id = r.blocking_session_id
 ) ca_count_resource_type
+OUTER APPLY 
+(
+    SELECT DB_NAME(dbid) AS DatabaseName ,OBJECT_ID(objectid) AS ObjectName,
+           ISNULL
+           (
+               (
+                   SELECT TEXT AS [processing-instruction(definition)]
+                   FROM sys.dm_exec_sql_text(sdec.most_recent_sql_handle)
+                   FOR XML PATH(''), 
+                   TYPE
+                ), 
+                ''
+            ) AS Query
+    FROM sys.dm_exec_sql_text(sdec.most_recent_sql_handle)
+) sdest;
+
 
 SELECT 
 IIF(req.session_id IS NULL, 'FALSE', 'TRUE') AS IsCurrentRequest,
+sdes.nt_domain,
+sdes.nt_user_name,
 sdest.DatabaseName,
 @@SPID MyCurrentSessionId,
 sdes.session_id as SessionId,
 req.blocking_session_id AS BlockingSessionId,
+t.resource_type AS TransactionResourceType,
+t.resource_subtype AS TransactionResourceSubType,
+t.resource_subtype AS TransactionResourceDescription,
 req.open_transaction_count AS OpenTransactions,
 req.command AS SQLCommandType,
 req.status AS SQLCommandStatus,
@@ -126,9 +189,6 @@ CONVERT(VARCHAR(100), FLOOR(sp.waittime/1000.0/60/60/24)) + 'd'
 + ':' + CONVERT(VARCHAR(100), FLOOR(sp.waittime/1000.0%60)) + 's'
 + ':' + CONVERT(VARCHAR(100), sp.waittime/10000 % 1000) + 'ms'
 AS LockWaitTime,
-t.resource_type AS TransactionResourceType,
-t.resource_subtype AS TransactionResourceSubType,
-t.resource_subtype AS TransactionResourceDescription,
 CASE
 	WHEN t.request_mode = 'Sch-S' THEN 'Sch-S - Schema stability'
 	WHEN t.request_mode = 'Sch-M' THEN 'Sch-M - Schema modification'
@@ -153,6 +213,7 @@ CASE
 	WHEN t.request_mode = 'RangeX_X' THEN 'RangeX_X - Exclusive Key-Range and Exclusive Resource lock. This is a conversion lock used when updating a key in a range'
 	ELSE t.request_mode + ' - Unknown'
 END AS TransactionMode,
+FORMAT(sdes.memory_usage * 0.008, N'N2') AS MemoryUsageInMegs,
 t.resource_lock_partition AS TransactonResourceLockPartition,
 t.request_type AS TransactionType,
 t.request_status AS TransactionStatus,
@@ -178,19 +239,17 @@ req.writes,
 req.reads,
 req.logical_reads,
 req.row_count,
-FORMAT(mg.ideal_memory_kb/1024, N'N0') AS IdealMemoryInMb,
-FORMAT(mg.requested_memory_kb/1024, N'N0') AS RequestedMemoryInMb,
-FORMAT(mg.granted_memory_kb/1024, N'N0') AS GrantedMemoryInMb,
+FORMAT(mg.ideal_memory_kb/1024, N'N2') AS IdealMemoryInMb,
+FORMAT(mg.requested_memory_kb/1024, N'N2') AS RequestedMemoryInMb,
+FORMAT(mg.granted_memory_kb/1024, N'N2') AS GrantedMemoryInMb,
 mg.grant_time AS GrantTime,
-FORMAT(mg.query_cost, N'N0') AS QueryCost,
+FORMAT(mg.query_cost, N'N2') AS QueryCost,
 req.cpu_time AS CPUTime,
 sdes.host_name AS HostName, 
 sdes.program_name AS ProgramName,
 sdes.client_interface_name,
 sdes.login_name,
 sdes.login_time,
-sdes.nt_domain,
-sdes.nt_user_name,
 sdec.client_net_address,
 sdec.local_net_address
 FROM sys.dm_exec_sessions AS sdes
@@ -230,5 +289,4 @@ AND
     (@queryLike IS NOT NULL AND CAST(sdest.Query AS NVARCHAR(MAX)) LIKE '%' + @queryLike + '%')
     OR @queryLike IS NULL
 )
-ORDER BY req.total_elapsed_time, sdec.session_id
-
+ORDER BY req.total_elapsed_time, sdec.session_id;
