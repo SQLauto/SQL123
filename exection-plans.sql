@@ -185,6 +185,9 @@ txpt.text AS SqlText,
 txpt.statement_start_offset AS StatementStartOffset,
 txpt.statement_end_offset AS StatementEndOffset,
 
+IIF(txpt.plan_handle IS NOT NULL, CONCAT('USE ', DB_NAME(), '; ', 'DBCC FREEPROCCACHE (', CONVERT(VARCHAR(128), txpt.plan_handle, 1), ');'), 'N/A') AS FreeExecutionPlan,
+CONCAT('USE ', DB_NAME(), '; ', 'DBCC FREEPROCCACHE;') FreeAllExecutionPlans,
+
 txpt.type_desc AS TypeDesc,
 DB_NAME(txpt.dbid) DatabaseName,
 FORMAT(execution_count, N'N0') AS ExecutionCount,
