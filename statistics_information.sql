@@ -6,7 +6,9 @@
 
 DECLARE @schemaName NVARCHAR(MAX) = NULL;
 DECLARE @tableName NVARCHAR(MAX) = NULL;
+DECLARE @columnName NVARCHAR(MAX) = NULL;
 DECLARE @statName NVARCHAR(MAX) = NULL;
+DECLARE @statId INT = NULL;
 DECLARE @orderByModification BIT = 1;
 DECLARE @orderByStatsLastUpdated BIT = 0;
 DECLARE @orderByStatsRowsOnUpdate BIT = 0;
@@ -47,6 +49,7 @@ DECLARE @orderByThreshold20Percent BIT = 0;
 -- DROPPING Statistics
 -- DROP STATISTICS <table>.<statistics name>;
 
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 
 SELECT
 OBJECT_SCHEMA_NAME(s.object_id) AS SchemaName,
@@ -57,6 +60,7 @@ s.stats_id AS StatId,
 -- 0 Means that statistics will update for an index.
 s.no_recompute AS Noecompute,
 c.name ColumnName,
+CONCAT('USE ', DB_NAME(), ';', ' DBCC SHOW_STATISTICS(''', OBJECT_NAME(s.object_id), ''', ''', s.name, ''');') AS ViewStatisticsHistogram, 
 sp.last_updated AS StatsLastUpdated, 
 FORMAT(sp.rows, N'N0') AS StatsRowsOnUpdate,
 FORMAT(sp.modification_counter, N'N0') AS Modifications,
@@ -99,7 +103,9 @@ INNER JOIN sys.all_columns ac ON ac.column_id = sc.column_id AND ac.object_id = 
 CROSS APPLY sys.dm_db_stats_properties(s.object_id, s.stats_id) sp
 WHERE (OBJECT_SCHEMA_NAME(s.object_id) = @schemaName OR @schemaName IS NULL)
 AND (OBJECT_NAME(s.object_id) = @tableName OR @tableName IS NULL)
+AND (OBJECT_NAME(s.object_id) = @columnName OR @columnName IS NULL)
 AND (s.name = @statName OR @statName IS NULL)
+AND (s.stats_id = @statId OR @statId IS NULL)
 AND OBJECT_SCHEMA_NAME(s.object_id) != 'sys'
 ORDER BY
 CASE WHEN ISNULL(@orderByThreshold20Percent, 0) = 1 THEN FLOOR(sp.modification_counter/(500+(0.20*sp.rows)) * 100) END DESC,
@@ -108,7 +114,3 @@ CASE WHEN ISNULL(@orderByModification, 0) = 1 THEN sp.modification_counter END D
 CASE WHEN ISNULL(@orderByStatsLastUpdated, 0) = 1 THEN sp.last_updated END DESC,
 CASE WHEN ISNULL(@orderByStatsRowsOnUpdate, 0) = 1 THEN sp.rows END DESC,
 OBJECT_NAME(s.object_id) ASC, s.stats_id ASC
-
-
-
-
