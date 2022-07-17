@@ -49,6 +49,7 @@ DECLARE @orderByThreshold20Percent BIT = 0;
 -- DROPPING Statistics
 -- DROP STATISTICS <table>.<statistics name>;
 
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 
 SELECT
 OBJECT_SCHEMA_NAME(s.object_id) AS SchemaName,
