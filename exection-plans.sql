@@ -158,6 +158,15 @@ CTE_ExecutionPlans_Distinct AS
 (
 	SELECT DISTINCT *
 	FROM CTE_ExecutionPlans
+),
+CTE_ExecutionPlan_WithXmlPlan AS
+(
+	SELECT ep.*,
+	qp.query_plan AS ExecutionPlanInXml,
+	IIF(ep.plan_handle IS NOT NULL, CONCAT('USE ', DB_NAME(), '; ', 'DBCC FREEPROCCACHE (', CONVERT(VARCHAR(128), ep.plan_handle, 1), ');'), 'N/A') AS FreeExecutionPlan,
+	CONCAT('USE ', DB_NAME(), '; ', 'DBCC FREEPROCCACHE;') FreeAllExecutionPlans
+	FROM CTE_ExecutionPlans_Distinct ep
+	OUTER APPLY sys.dm_exec_query_plan(IIF(ISNULL(@showExecutionPlan, 0) = 0, NULL, ep.plan_handle)) AS qp
 )
 
 SELECT TOP(ISNULL(@howManyRows, 10))
@@ -182,11 +191,12 @@ SUBSTRING
 ) 
 AS SQLStatementText,
 txpt.text AS SqlText,
+ExecutionPlanInXml,
 txpt.statement_start_offset AS StatementStartOffset,
 txpt.statement_end_offset AS StatementEndOffset,
 
-IIF(txpt.plan_handle IS NOT NULL, CONCAT('USE ', DB_NAME(), '; ', 'DBCC FREEPROCCACHE (', CONVERT(VARCHAR(128), txpt.plan_handle, 1), ');'), 'N/A') AS FreeExecutionPlan,
-CONCAT('USE ', DB_NAME(), '; ', 'DBCC FREEPROCCACHE;') FreeAllExecutionPlans,
+FreeExecutionPlan,
+FreeAllExecutionPlans,
 
 txpt.type_desc AS TypeDesc,
 DB_NAME(txpt.dbid) DatabaseName,
@@ -247,7 +257,7 @@ FORMAT(txpt.last_rows, N'N0') AS LastRows,
 FORMAT(txpt.min_rows, N'N0') AS MinRows,
 FORMAT(txpt.Max_rows, N'N0') AS MaxRows,
 
-FORMAT(txpt.total_num_page_server_reads/txpt.execution_count, N'N0') AS TotalNumPageServerReads,
+FORMAT(txpt.total_num_page_server_reads/txpt.execution_count, N'N0') AS AvgNumPageServerReads,
 FORMAT(txpt.total_num_page_server_reads, N'N0') AS TotalNumPageServerReads,
 FORMAT(txpt.last_num_page_server_reads, N'N0') AS LastNumPageServerReads,
 FORMAT(txpt.min_num_page_server_reads, N'N0') AS MinNumPageServerReads,
@@ -353,11 +363,9 @@ FORMAT(txpt.refcounts, N'N0') AS NumberOfCacheObjectsReferencingThisCacheObject,
 FORMAT(LEN(txpt.text), N'N0') QueryLength,
 txpt.query_hash AS QueryHash,
 txpt.query_plan_hash AS QueryPlanHash,
-qp.query_plan AS ExecutionPlanInXml,
 txpt.plan_handle AS PlanHandle,
 txpt.parent_plan_handle AS ParentHandle
-FROM CTE_ExecutionPlans_Distinct txpt
-OUTER APPLY sys.dm_exec_query_plan(IIF(ISNULL(@showExecutionPlan, 0) = 0, NULL, txpt.plan_handle)) AS qp
+FROM CTE_ExecutionPlan_WithXmlPlan txpt
 WHERE (txpt.plan_handle = @queryOnPlan OR @queryOnPlan IS NULL)
 ORDER BY
 
@@ -379,7 +387,6 @@ CASE WHEN ISNULL(@avgDuration, 0) = 1 THEN txpt.total_elapsed_time/txpt.executio
 CASE WHEN ISNULL(@exectionCount, 0) = 1 THEN txpt.execution_count END DESC,
 
 txpt.last_execution_time DESC;
-
 
 IF ISNULL(@viewHowManyOfObjectTypes, 0) = 1 BEGIN
     SELECT objtype, 
