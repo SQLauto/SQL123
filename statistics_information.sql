@@ -57,6 +57,7 @@ s.stats_id AS StatId,
 -- 0 Means that statistics will update for an index.
 s.no_recompute AS Noecompute,
 c.name ColumnName,
+CONCAT('USE ', DB_NAME(), ';', ' DBCC SHOW_STATISTICS(''', OBJECT_NAME(s.object_id), ''', ''', s.name, ''');') AS ViewStatisticsHistogram, 
 sp.last_updated AS StatsLastUpdated, 
 FORMAT(sp.rows, N'N0') AS StatsRowsOnUpdate,
 FORMAT(sp.modification_counter, N'N0') AS Modifications,
@@ -108,7 +109,3 @@ CASE WHEN ISNULL(@orderByModification, 0) = 1 THEN sp.modification_counter END D
 CASE WHEN ISNULL(@orderByStatsLastUpdated, 0) = 1 THEN sp.last_updated END DESC,
 CASE WHEN ISNULL(@orderByStatsRowsOnUpdate, 0) = 1 THEN sp.rows END DESC,
 OBJECT_NAME(s.object_id) ASC, s.stats_id ASC
-
-
-
-
